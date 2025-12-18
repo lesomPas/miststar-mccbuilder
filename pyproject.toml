@@ -1,12 +1,40 @@
 [project]
 name = "miststar-mccbuilder"
 version = "0.1.0"
-description = "Add your description here"
+description = "Minecraft Command Builder"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "internal",
+    "miststar-serializer",
+    "miststar-textcomps",
+    "path>=17.1.1",
+]
+
+[tool.uv.workspace]
+members = [
+    "internal",
+    "libs/miststar-serializer",
+    "libs/miststar-textcomps",
+]
+
+[tool.uv.sources]
+internal = { workspace = true }
+miststar-serializer = { workspace = true }
+miststar-textcomps = { workspace = true }
+
+[tool.mypy]
+mypy_path = "typings"
+warn_return_any = false
+warn_unused_configs = false
+explicit_package_bases = true
+strict_equality = true            # 禁止可疑的 == 比较（如 str vs int）
+show_error_codes = true           # 显示错误码（方便搜索）
+pretty = true                     # 错误信息更友好
+# ignore_missing_imports = true
+
+[dependency-groups]
+dev = [
     "mypy>=1.19.1",
 ]
 
-[tool.mypy]
-explicit_package_bases = true
