@@ -1,6 +1,5 @@
-# create by deepseek && lesomras on 2025-12-14
+# create by lesomras on 2025-12-14
 
-import json
 from pathlib import Path
 from typing import Union
 

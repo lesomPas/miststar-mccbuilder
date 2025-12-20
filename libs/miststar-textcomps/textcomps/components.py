@@ -7,21 +7,11 @@ from typing import Union, Optional
 from internal.dict_checking import is_value, list_of, matching
 from internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
 
-priority = {
-    "translate": 4,
-    "text": 3,
-    "score": 2,
-    "selector": 1,
-    None: 0
-}
 segmentation = ">[]"
+indentation = 2
 
 class TextComponent(ABC):
     """所有文本组件的基类"""
-
-    def with_id(self) -> str:
-        """返回组件的唯一标识符与信息"""
-        return f"{id(self)}::{str(self)}"
 
     @classmethod
     @abstractmethod
@@ -51,14 +41,14 @@ class TextComponent(ABC):
 
 class Rawtext(TextComponent):
     """实现Minecraft BE中rawtext文本组件的模式, 本质上是个容器"""
+    __slots__ = ("_data", )
 
     def __init__(self, sequence: Optional[list[TextComponent]] = None) -> None:
         """实现由TextComponent列表到Rawtext的转换"""
         sequence = sequence if sequence is not None else []
         if not list_of(sequence, TextComponent):
-            raise UnsupportedArgument("Sequence must be None or a list of TextComponents")
+            raise UnsupportedArgument("Sequence must be None or a list of TextComponent")
         self._data = sequence
-
 
     @classmethod
     def from_dictionary(cls, dictionary: dict) -> "Rawtext":
@@ -137,17 +127,76 @@ class Rawtext(TextComponent):
 
         return TranslateBuilder(self, translate)
 
+    def get_structured_str(self, offset: int = 0, _repr: bool = False, leading_indent: bool = True) -> str:
+        """
+        获取结构化字符串
+
+        args: offset 控制缩进偏移量
+              _repr repr() 打印逻辑
+              leading_indent 控制前导缩进存在性
+        """
+        if not isinstance(offset, int) or offset < 0:
+            raise ValueError("'offset' must be a positive integer")
+        stack: list[Rawtext] = [self]
+        pstack: list[int] = [0]
+        pointer = 0
+        indent = offset + indentation
+
+        field = f"<{id(self)}>" if _repr else ""
+        result = f"{(' ' * offset if leading_indent else '')}rawtext{field} => {{\n"
+        while (stack):
+            current_rawtext: Rawtext = stack[-1]
+            pointer = pstack[-1]
+
+            while (pointer < len(current_rawtext)):
+                item = current_rawtext[pointer]
+                if isinstance(item, Translate):
+                    result += item.get_structured_str(indent, _repr = _repr)
+                    pointer += 1
+                    continue
+                elif not isinstance(item, Rawtext):
+                    result += f"{' ' * indent}{repr(item) if _repr else str(item)}\n"
+                    pointer += 1
+                    continue
+                else:
+                    stack.append(item)
+                    pstack[-1] = pointer + 1
+                    pstack.append(0)
+                    pointer = 0
+                    indent += indentation
+                    field = f"<{id(item)}>" if _repr else ""
+                    result += f"{' ' * indent}rawtext{field} => {{\n"
+                    break
+            else:
+                stack.pop()
+                pstack.pop()
+                indent -= indentation
+                result += f"{' ' * indent}}}\n"
+
+        return result
+
+    def __len__(self) -> int:
+        return len(self._data)
+
+    def __getitem__(self, index: int) -> TextComponent:
+        return self._data[index]
+
     def __str__(self) -> str:
-        return pformat(self._data)
+        return self.get_structured_str(0)
 
     def __repr__(self) -> str:
-        return f"-rawtext::{str(self)}"
+        return self.get_structured_str(0, _repr = True)
 
 
 class TranslateBuilder(object):
+    """Translate快速构建类, Rawtext.translate(...).build(...)链式构造的重要组成部分"""
+    __slots__ = ("raw", "translate")
+
     def __init__(self, raw: Rawtext, translate: str) -> None:
-        if not isinstance(raw, Rawtext) or not isinstance(translate, str):
-            raise UnsupportedArgument("build failed")
+        if not isinstance(raw, Rawtext):
+            raise UnsupportedArgument("Build Failed! 'raw' must be a Rawtext")
+        if not isinstance(translate, str):
+            raise UnsupportedArgument("Build failed! 'translate' must be a string")
 
         self.raw = raw
         self.translate = translate
@@ -157,9 +206,9 @@ class TranslateBuilder(object):
             return self.raw.add(Translate(self.translate))
 
         if any(not isinstance(i, TextComponent) for i in args):
-            raise UnsupportedArgument("build failed")
+            raise UnsupportedArgument("Build failed! Parameters must be a subclass of TextComponent")
 
-        withraw = Rawtext().add_sequence(list(args))
+        withraw = Rawtext().add(*args)
         return self.raw.add(Translate(self.translate, with_content = withraw))
 
     def build_adx(self, *args) -> Rawtext:
@@ -174,7 +223,7 @@ class TranslateBuilder(object):
             return self.raw.add(Translate(self.translate))
 
         if any(not isinstance(i, str) for i in args):
-            raise UnsupportedArgument("build failed")
+            raise UnsupportedArgument("Build failed! Parameters must be a string")
 
         return self.raw.add(Translate(self.translate, string_sequence = list(args)))
 
@@ -187,11 +236,12 @@ class TranslateBuilder(object):
 
 class Text(TextComponent):
     """实现Minecraft BE中text组件的模式"""
+    __slots__ = ("content", )
 
     def __init__(self, content: str) -> None:
         """实现由参数到Text的转换"""
         if not isinstance(content, str):
-            raise UnsupportedArgument("Content must be a string")
+            raise UnsupportedArgument("'content' must be a string")
 
         self.content = content
 
@@ -219,14 +269,15 @@ class Text(TextComponent):
         }
 
     def __str__(self) -> str:
-        return self.content
+        return f"text  | {self.content}"
 
     def __repr__(self) -> str:
-        return f"-text::{str(self)}"
+        return f"text<{id(self)}>  | {self.content} (text)"
 
 
 class Score(TextComponent):
     """实现Minecraft BE中score文本组件的模式"""
+    __slots__ = ("name", "objective")
 
     def __init__(self, name: str, objective: str) -> None:
         """实现由参数到Score的转换"""
@@ -308,14 +359,15 @@ class Score(TextComponent):
         return cls("@initiator", objective)
 
     def __str__(self) -> str:
-        return f"{self.name} >> {self.objective}"
+        return f"score | {self.name} scoreboard :{self.objective}"
 
     def __repr__(self) -> str:
-        return f"-score::{str(self)}"
+        return f"score<{id(self)}> | {self.name} (name) scoreboard :{self.objective} (objective)"
 
 
 class Selector(TextComponent):
     """实现Minecraft BE中selector文本组件的模式"""
+    __slots__ = ("content", )
 
     def __init__(self, content: str) -> None:
         """实现由参数到Selector的转换"""
@@ -348,14 +400,16 @@ class Selector(TextComponent):
         }
 
     def __str__(self) -> str:
-        return self.content
+        return f"selector | {self.content}"
 
     def __repr__(self) -> str:
-        return f"-selector::{str(self)}"
+        return f"selector<{id(self)}> | {self.content} (selector)"
 
 
 class Translate(TextComponent):
     """实现Minecraft BE中Translate文本组件的模式"""
+    __slots__ = ("translate", "with_content", "string_sequence")
+
     def __init__(self, translate: str, with_content: Optional[Rawtext] = None, string_sequence: Optional[list[str]] = None) -> None:
         """
         构建Translate文本组件, 实际开发中建议使用Rawtext.translate(...).build(...)
@@ -449,20 +503,67 @@ class Translate(TextComponent):
 
         return {"translate": translate}
 
+    def _structured_header(self, offset: int, _repr: bool = False) -> str:
+        offset_s = " " * offset
+        field = f"<{id(self)}>" if _repr else ""
+        tip = " (translate)" if _repr else ""
+        result = (
+            f"{offset_s}*translate{field} => {{\n"
+            f"{offset_s}{' ' * indentation}=> translate | {self.translate}{tip}\n"
+            f"{offset_s}{' ' * indentation}=> with | "
+        )
+        return result
+
+    def _structured_string_sequence(self, offset: int = 0, _repr: bool = False) -> str:
+        if self.string_sequence is None:
+            return ""
+        offset_s = " " * offset
+        field = f"<{id(self.string_sequence)}>" if _repr else ""
+        result = f"sequence<string>{field} => (\n"
+
+        for item in self.string_sequence:
+            result += f"{offset_s}    {item}\n"
+        result += f"{offset_s}  )"
+        result += " (with<sequence>)\n" if _repr else "\n"
+        return result
+
+    def get_structured_str(self, offset: int = 0, _repr: bool = False) -> str:
+        """
+        获取结构化字符串
+
+        args: offset 控制缩进偏移量
+              _repr repr() 打印逻辑
+        """
+        if self.is_pure_translate():
+            return f"{' ' * offset} translate | {self.translate}\n"
+        if not isinstance(offset, int) or offset < 0:
+            raise ValueError("'offset' must be a positive integer")
+
+        result = self._structured_header(offset, _repr = _repr)
+        if self.with_content is not None:
+            result += self.with_content.get_structured_str(offset + indentation, leading_indent = False, _repr = _repr)[:-1]
+            result += " (with<rawtext>)\n" if _repr else "\n"
+
+        elif self.string_sequence is not None:
+            result += self._structured_string_sequence(offset, _repr = _repr)
+
+        result += (" " * offset) + "} *end\n"
+        return result
+
     def __str__(self) -> str:
-        if self.is_rawtext_translate():
-            return f"{self.translate}\n  {pformat(self.with_content)}"
-        elif self.is_string_translate():
-            return f"{self.translate}\n  {pformat(self.string_sequence)}"
-        return self.translate
+        return self.get_structured_str(0)
 
     def __repr__(self) -> str:
-        if self.is_rawtext_translate():
-            return f"-translate::{self.translate}\n  -with::{pformat(self.with_content)}"
-        elif self.is_string_translate():
-            return f"-translate::{self.translate}\n  -with::{pformat(self.string_sequence)}"
-        return f"-translate::{self.translate}"
+        return self.get_structured_str(0, _repr = True)
 
+
+priority = {
+    "translate": 4,
+    "text": 3,
+    "score": 2,
+    "selector": 1,
+    None: 0
+}
 
 def _array_processing(dictionary: dict) -> dict:
     """按照预先设定的顺序解析dictionary中多余的格式"""
@@ -470,7 +571,7 @@ def _array_processing(dictionary: dict) -> dict:
     for sentence in dictionary.keys():
         if (p := priority.get(sentence, -1)) == -1:
             raise MalformedArgument("priority dictionary error")
-        if p >= priority[results]:
+        if results is None or p >= priority[results]:
             results = sentence
     return {results: dictionary[results]} if results is not None else {}
 

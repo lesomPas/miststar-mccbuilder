@@ -24,10 +24,9 @@ miststar-serializer = { workspace = true }
 miststar-textcomps = { workspace = true }
 
 [tool.mypy]
-mypy_path = "typings"
 warn_return_any = false
 warn_unused_configs = false
-explicit_package_bases = true
+explicit_package_bases = false
 strict_equality = true            # 禁止可疑的 == 比较（如 str vs int）
 show_error_codes = true           # 显示错误码（方便搜索）
 pretty = true                     # 错误信息更友好

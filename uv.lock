@@ -12,7 +12,7 @@ members = [
 
 [[package]]
 name = "internal"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "internal" }
 
 [[package]]
@@ -96,7 +96,7 @@ dev = [{ name = "mypy", specifier = ">=1.19.1" }]
 
 [[package]]
 name = "miststar-serializer"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "libs/miststar-serializer" }
 dependencies = [
     { name = "tomlkit" },
@@ -107,7 +107,7 @@ requires-dist = [{ name = "tomlkit", specifier = ">=0.13.3" }]
 
 [[package]]
 name = "miststar-textcomps"
-version = "0.1.0"
+version = "1.1.0a0"
 source = { editable = "libs/miststar-textcomps" }
 
 [[package]]
