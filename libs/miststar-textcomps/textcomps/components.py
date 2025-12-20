@@ -7,8 +7,8 @@ from typing import Union, Optional
 from internal.dict_checking import is_value, list_of, matching
 from internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
 
-segmentation = ">[]"
-indentation = 2
+segmentation = "[]."
+indentation = 4
 
 class TextComponent(ABC):
     """所有文本组件的基类"""
@@ -82,34 +82,15 @@ class Rawtext(TextComponent):
             if isinstance(sentence, TextComponent):
                 self.add(sentence)
                 continue
-            if not isinstance(sentence, str):
-                raise UnsupportedArgument("The parameters must be a subclass of TextComponent or string")
 
-            # Score
-            elif (p := sentence.find(segmentation)) != -1:
-                self.add(Score(sentence[:p], sentence[p+len(segmentation):]))
-                continue
-
-            # Selector
-            elif len(sentence) >= 2 and sentence[0] == "@" and sentence[1] in ["p", "r", "a", "e", "s", "n"]:
-                if len(sentence) == 2:
-                    self.add(Selector(sentence))
-                    continue
-                no_whitespace = sentence.replace(" ", "")
-                if no_whitespace[-1] == "]" and no_whitespace[2] == "[":
-                    self.add(Selector(sentence))
-                    continue
-            elif len(sentence) >= 10 and sentence[:10] == "@initiator":
-                if len(sentence) == 10:
-                    self.add(Selector(sentence))
-                    continue
-                no_whitespace = sentence.replace(" ", "")
-                if no_whitespace[-1] == "]" and no_whitespace[10] == "[":
-                    self.add(Selector(sentence))
-                    continue
-
-            # default Text
-            self.add(Text(sentence))
+            sentence_type, sentence_data = infer_type(sentence)
+            match sentence_type:
+                case "text":
+                    self.add(Text(sentence_data[0]))
+                case "selector":
+                    self.add(Selector(sentence_data[0]))
+                case "score":
+                    self.add(Score(sentence_data[0], sentence_data[1]))
         return self
 
 
@@ -522,8 +503,8 @@ class Translate(TextComponent):
         result = f"sequence<string>{field} => (\n"
 
         for item in self.string_sequence:
-            result += f"{offset_s}    {item}\n"
-        result += f"{offset_s}  )"
+            result += f"{offset_s}{' ' * (2 * indentation)}{item}\n"
+        result += f"{offset_s}{' ' * indentation})"
         result += " (with<sequence>)\n" if _repr else "\n"
         return result
 
@@ -555,6 +536,33 @@ class Translate(TextComponent):
 
     def __repr__(self) -> str:
         return self.get_structured_str(0, _repr = True)
+
+
+def infer_type(sentence: str) -> tuple[str, list[str]]:
+    if not isinstance(sentence, str):
+        raise UnsupportedArgument("The parameters must be a subclass of TextComponent or string")
+
+    # Score
+    if (p := sentence.find(segmentation)) != -1:
+        return ("score", [sentence[p+len(segmentation):], sentence[:p]])
+
+    # Selector
+    elif len(sentence) >= 2 and sentence[0] == "@" and sentence[1] in ["p", "r", "a", "e", "s", "n"]:
+        if len(sentence) == 2:
+            return ("selector", [sentence])
+        no_whitespace = sentence.replace(" ", "")
+        if no_whitespace[-1] == "]" and no_whitespace[2] == "[":
+            return ("selector", [sentence])
+
+    elif len(sentence) >= 10 and sentence[:10] == "@initiator":
+        if len(sentence) == 10:
+            return ("selector", [sentence])
+        no_whitespace = sentence.replace(" ", "")
+        if no_whitespace[-1] == "]" and no_whitespace[10] == "[":
+            return ("selector", [sentence])
+
+    # default Text
+    return ("text", [sentence])
 
 
 priority = {
