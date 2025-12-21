@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from internal.exceptions import MalformedArgument
+from ..internal.exceptions import MalformedArgument
 
 class JsonSerializer(object):
     """JSON序列化器"""

@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Union
 
 from .components import rawtext_lexer, Rawtext, TextComponent
-from internal.exceptions import MalformedArgument, UnsupportedArgument
-from serializer import JsonSerializer, CompactSerializer
+from ..internal.exceptions import MalformedArgument, UnsupportedArgument
+from ..serializer import JsonSerializer, CompactSerializer
 
 
 class Parser:

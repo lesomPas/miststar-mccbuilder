@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from pprint import pformat
 from typing import Union, Optional
 
-from internal.dict_checking import is_value, list_of, matching
-from internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
+from ..internal.dict_checking import is_value, list_of, matching
+from ..internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
 
 segmentation = "[]."
 indentation = 4
