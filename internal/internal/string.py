@@ -1,6 +1,31 @@
 # create by lesomras on 2025-12-21
 
 def tokenize_template(content: str) -> list[tuple[str, bool]]:
+    """
+    对模板字符串进行词法分析, 将其拆分为文本片段和插值域.
+
+    此函数是模板系统的词法分析器, 识别模板中的普通文本和由花括号 {} 界定的插值域.
+    它将处理转义序列 {{ 和 }}(分别转换为字面量 { 和 }), 并正确匹配嵌套的插值域边界.
+
+    args: content 待解析的模板字符串.例如: "Hello {@p}, you have {kills[].Steve}!"
+
+    return: 一个列表, 其中每个元素是一个二元组 (segment, is_formatted).
+        - segment (str): 提取出的文本片段.
+        - is_formatted (bool): 标识该片段是否为需要后续处理的插值域.
+          - True: 该片段是一个插值域内容(不包含外层的定界符 {}), 应传递给 infer_type.
+          - False: 该片段是普通文本(或转义后的花括号).
+
+    mapping:
+        >>> tokenize_template("Hello {{@p}}, you have {kills[].Steve}!")
+        [
+            ('Hello ', False),          # 普通文本
+            ('{', False),               # 转义后的字面量左大括号
+            ('@p', False),              # 普通文本(因转义, 不被识别为插值域)
+            (', you have ', False),     # 普通文本
+            ('kills[].Steve', True),    # 插值域内容, 需进一步推断类型
+            ('!', False)                # 普通文本
+        ]
+    """
     n = len(content)
     package: list[str] = []
     result = []

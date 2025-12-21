@@ -115,6 +115,7 @@ class Rawtext(TextComponent):
         args: offset 控制缩进偏移量
               _repr repr() 打印逻辑
               leading_indent 控制前导缩进存在性
+        return: 结构化的字符串
         """
         if not isinstance(offset, int) or offset < 0:
             raise ValueError("'offset' must be a positive integer")
@@ -514,6 +515,7 @@ class Translate(TextComponent):
 
         args: offset 控制缩进偏移量
               _repr repr() 打印逻辑
+         return: 结构化的字符串
         """
         if self.is_pure_translate():
             return f"{' ' * offset} translate | {self.translate}\n"
@@ -539,6 +541,16 @@ class Translate(TextComponent):
 
 
 def infer_type(sentence: str) -> tuple[str, list[str]]:
+    """
+    根据字符串推断构建组件类型
+
+    args: sentence 待判断类型的字符串
+    return: 包含了类型信息和组件数据的tuple.
+    mapping:
+        "@xxx" || "@xxx[...]" -> ("selector", ["@xxx"]) || ("selector", ["@xxx[...]"])   (xxx为特定字符串)
+        "objective[].name" -> ("score", ["name", "objective"])
+        otherwise -> ("text", [sentence])
+    """
     if not isinstance(sentence, str):
         raise UnsupportedArgument("The parameters must be a subclass of TextComponent or string")
 

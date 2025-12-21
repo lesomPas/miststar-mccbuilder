@@ -21,6 +21,7 @@ from .components import (
     Selector,         # 选择器组件
     Translate,        # 翻译组件
     TranslateBuilder, # 翻译构建组件
+    infer_type,       # 类型推断组件
 )
 
 # 解析器
@@ -35,7 +36,11 @@ from .parser import (
     extract_strings,         # 快捷函数：提取字符串
 )
 
-
+# 模板系统
+from .builder import (
+    template_analysis,    # 模板解析构造函数
+    template_builder,     # 模板生成构造函数
+)
 # 导出列表
 __all__ = [
     # 版本信息
@@ -51,6 +56,8 @@ __all__ = [
 
     # 构建器类
     "TranslateBuilder",
+    "template_analysis",
+    "template_builder",
 
     # 解析器
     "Parser",

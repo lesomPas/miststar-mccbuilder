@@ -34,6 +34,7 @@ pretty = true                     # 错误信息更友好
 
 [dependency-groups]
 dev = [
+    "build>=1.3.0",
     "mypy>=1.19.1",
 ]
 

@@ -5,6 +5,15 @@ from internal.exceptions import UnsupportedArgument
 from internal.string import tokenize_template
 
 def template_analysis(template: str) -> list[TextComponent]:
+    """
+    根据模板生成包含文本组件的列表
+
+    args: template 待处理的模板
+    return: 解析过后的文本组件列表
+    mapping:
+        "我是{@s}" -> [Text("我是"), Selector("@s")]
+        "我一共有{coins[].@s}个金币{.}" -> [Text("我一共有"), Score("@s", "coins"), Text("个金币"), Text(".")]
+    """
     if not isinstance(template, str):
         raise UnsupportedArgument("'template' must be a string")
 
@@ -27,4 +36,5 @@ def template_analysis(template: str) -> list[TextComponent]:
 
 
 def template_builder(template: str) -> Rawtext:
+    """根据模板生成Rawtext"""
     return Rawtext(template_analysis(template))
