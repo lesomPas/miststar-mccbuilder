@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "miststar-mccbuilder"
-version = "0.3.2.alpha"
+version = "0.3.2-alpha"
 description = "Minecraft Command Builder"
 readme = "README.md"
 license = "MIT"
@@ -25,10 +25,16 @@ Issues = "https://github.com/lesomPas/miststar-mccbuilder/issues"
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
+    "pytest>=9.0.2",
 ]
 
 [tool.setuptools.packages.find]
-where = ["miststar"]
+where = [
+    "src/miststar",
+    ".data",
+    "tests",
+    "scripts",
+]
 
 [tool.mypy]
 warn_return_any = false
