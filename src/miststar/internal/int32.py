@@ -1,6 +1,6 @@
 # create by lesomras on 2025-12-22
 from __future__ import annotations
-from typing import Union, Optional
+from typing import Union, Optional, TypeAlias
 import math
 
 class Int32:
@@ -406,6 +406,18 @@ class Int32:
         if self.value & 0x80000000:
             self.value -= 0x100000000
 
+
+def checking32(value: Union[Int32, int]) -> bool:
+    if isinstance(value, Int32):
+        return True
+    return -2147483648 <= value <= 2147483647
+
+def build32(value: Union[Int32, int]) -> Int32:
+    if isinstance(value, Int32):
+        return value
+    return Int32(value)
+
+Integer: TypeAlias = Union[Int32, int]
 
 const_min = Int32(Int32.MIN)
 const_max = Int32(Int32.MAX)

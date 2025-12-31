@@ -14,6 +14,7 @@ authors = [
     { name = "小白子lesomras", email = "lesomras@outlook.com" },
 ]
 dependencies = [
+    "blinker>=1.9.0",
     "path>=17.1.1",
 ]
 
@@ -29,12 +30,7 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = [
-    "src/miststar",
-    ".data",
-    "tests",
-    "scripts",
-]
+where = ["src/"]
 
 [tool.mypy]
 warn_return_any = false

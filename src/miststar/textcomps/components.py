@@ -1,11 +1,10 @@
 # create by lesomras on 2025-12-13
 
 from abc import ABC, abstractmethod
-from pprint import pformat
 from typing import Union, Optional
 
-from ..internal.dict_checking import is_value, list_of, matching
-from ..internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
+from miststar.internal.dict_checking import is_value, list_of, matching
+from miststar.internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
 
 segmentation = "[]."
 indentation = 4
