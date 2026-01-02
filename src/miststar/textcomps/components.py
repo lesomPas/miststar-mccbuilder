@@ -1,7 +1,7 @@
 # create by lesomras on 2025-12-13
 
 from abc import ABC, abstractmethod
-from typing import Union, Optional
+from typing import Union, Optional, Callable, Literal
 
 from miststar.internal.dict_checking import is_value, list_of, matching
 from miststar.internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
@@ -99,6 +99,18 @@ class Rawtext(TextComponent):
 
     def get_data(self) -> list[TextComponent]:
         return self._data.copy()
+
+    def text(self, content: str) -> "Rawtext":
+        self.add(Text(content))
+        return self
+
+    def score(self, name: str, objective: str) -> "Rawtext":
+        self.add(Score(name, objective))
+        return self
+
+    def selector(self, content: str) -> "Rawtext":
+        self.add(Selector(content))
+        return self
 
     def translate(self, translate: str) -> "TranslateBuilder":
         """快速构建Translate文本组件. translate参数为Translate的第一个形参"""
@@ -299,44 +311,30 @@ class Score(TextComponent):
 
     @classmethod
     def p(cls, objective: str) -> "Score":
-        if not isinstance(objective, str):
-            raise UnsupportedArgument("Objective must be a string")
         return cls("@p", objective)
 
     @classmethod
     def r(cls, objective: str) -> "Score":
-        if not isinstance(objective, str):
-            raise UnsupportedArgument("Objective must be a string")
         return cls("@r", objective)
 
     @classmethod
     def a(cls, objective: str) -> "Score":
-        if not isinstance(objective, str):
-            raise UnsupportedArgument("Objective must be a string")
         return cls("@a", objective)
 
     @classmethod
     def e(cls, objective: str) -> "Score":
-        if not isinstance(objective, str):
-            raise UnsupportedArgument("Objective must be a string")
         return cls("@e", objective)
 
     @classmethod
     def s(cls, objective: str) -> "Score":
-        if not isinstance(objective, str):
-            raise UnsupportedArgument("Objective must be a string")
         return cls("@s", objective)
 
     @classmethod
     def n(cls, objective: str) -> "Score":
-        if not isinstance(objective, str):
-            raise UnsupportedArgument("Objective must be a string")
         return cls("@n", objective)
 
     @classmethod
     def initiator(cls, objective: str) -> "Score":
-        if not isinstance(objective, str):
-            raise UnsupportedArgument("Objective must be a string")
         return cls("@initiator", objective)
 
     def __str__(self) -> str:
@@ -354,7 +352,8 @@ class Selector(TextComponent):
         """实现由参数到Selector的转换"""
         if not isinstance(content, str):
             raise UnsupportedArgument("Content must be a string")
-
+        if infer_type(content)[0] != "selector":
+            raise MalformedArgument(f"invalid selector parameter: {content}")
         self.content = content
 
     @classmethod
@@ -425,8 +424,8 @@ class Translate(TextComponent):
     def is_string_translate(self) -> bool:
         return self.string_sequence is not None
 
-    @staticmethod
-    def from_dictionary(dictionary: dict) -> "Translate":
+    @classmethod
+    def from_dictionary(cls, dictionary: dict) -> "Translate":
         if len(dictionary) > 2:
             raise ValueError("Dictionary contains extra keys")
         if not is_value(dictionary, "translate", str):
@@ -437,14 +436,13 @@ class Translate(TextComponent):
         if "with" not in dictionary:
             if len(dictionary) > 1:
                 raise MalformedArgument("Dictionary contains extra keys")
-            return Translate(translate)
+            return cls(translate)
 
-        # breakpoint()
         with_value = dictionary["with"]
         if isinstance(with_value, dict):
-            return Translate(translate, with_content = Rawtext.from_dictionary(with_value))
+            return cls(translate, with_content = Rawtext.from_dictionary(with_value))
         elif list_of(with_value, str):
-            return Translate(translate, string_sequence = with_value)
+            return cls(translate, string_sequence = with_value)
         else:
             raise UnsupportedArgument("'with' must be a list of strings or a dictionary")
 
@@ -514,7 +512,7 @@ class Translate(TextComponent):
 
         args: offset 控制缩进偏移量
               _repr repr() 打印逻辑
-         return: 结构化的字符串
+        return: 结构化的字符串
         """
         if self.is_pure_translate():
             return f"{' ' * offset} translate | {self.translate}\n"
@@ -539,7 +537,7 @@ class Translate(TextComponent):
         return self.get_structured_str(0, _repr = True)
 
 
-def infer_type(sentence: str) -> tuple[str, list[str]]:
+def infer_type(sentence: str) -> tuple[Literal["text", "score", "selector"], list[str]]:
     """
     根据字符串推断构建组件类型
 
@@ -576,16 +574,16 @@ def infer_type(sentence: str) -> tuple[str, list[str]]:
     return ("text", [sentence])
 
 
-priority = {
-    "translate": 4,
-    "text": 3,
-    "score": 2,
-    "selector": 1,
-    None: 0
-}
-
 def _array_processing(dictionary: dict) -> dict:
     """按照预先设定的顺序解析dictionary中多余的格式"""
+    priority = {
+        "translate": 4,
+        "text": 3,
+        "score": 2,
+        "selector": 1,
+        None: 0
+    }
+
     results = None
     for sentence in dictionary.keys():
         if (p := priority.get(sentence, -1)) == -1:

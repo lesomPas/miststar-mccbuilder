@@ -1,5 +1,5 @@
 # create by lesomras on 2025-12-31
-from .token import TokenType, Token, TokenizedContent
+from string_operator.lexer.token import TokenType, Token, TokenizedContent
 
 whole_number_symbols = {
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "+", "-"

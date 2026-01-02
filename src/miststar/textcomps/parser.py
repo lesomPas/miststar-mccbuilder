@@ -147,29 +147,6 @@ class Parser:
 
         return rawtext.get_data()
 
-    @staticmethod
-    def extract_text_strings(rawtext: Rawtext) -> list[str]:
-        """
-        从Rawtext中提取所有纯文本字符串
-
-        Args:
-            rawtext: Rawtext对象
-
-        Returns:
-            纯文本字符串列表
-        """
-        components = Parser.extract_text_components(rawtext)
-        strings = []
-
-        for component in components:
-            if hasattr(component, 'content'):
-                strings.append(component.content)
-            elif hasattr(component, 'translate'):
-                strings.append(component.translate)
-            elif hasattr(component, '__str__'):
-                strings.append(str(component))
-
-        return strings
 
     @staticmethod
     def to_json_compatible(obj: TextComponent) -> dict:
@@ -277,7 +254,3 @@ def extract_components(rawtext: Rawtext) -> list[TextComponent]:
     """从Rawtext中提取所有文本组件（快捷函数）"""
     return Parser.extract_text_components(rawtext)
 
-
-def extract_strings(rawtext: Rawtext) -> list[str]:
-    """从Rawtext中提取所有纯文本字符串（快捷函数）"""
-    return Parser.extract_text_strings(rawtext)

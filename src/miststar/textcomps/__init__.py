@@ -33,7 +33,6 @@ from .parser import (
     validate_rawtext_file,    # 快捷函数：验证文件
     validate_rawtext_string,  # 快捷函数：验证字符串
     extract_components,      # 快捷函数：提取组件
-    extract_strings,         # 快捷函数：提取字符串
 )
 
 # 模板系统
@@ -67,7 +66,6 @@ __all__ = [
     "validate_rawtext_file",
     "validate_rawtext_string",
     "extract_components",
-    "extract_strings",
 ]
 
 # 包级配置

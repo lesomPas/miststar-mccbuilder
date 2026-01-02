@@ -1,5 +1,5 @@
-from miststar.lexer.lexer import tokenize
-from miststar.lexer.token import TokenType, TokenizedContent
+from string_operator.lexer.lexer import tokenize
+from string_operator.lexer.token import TokenType, TokenizedContent
 
 HEADER = '\033[95m'
 BLUE = '\033[94m'

@@ -38,3 +38,8 @@ def template_analysis(template: str) -> list[TextComponent]:
 def template_builder(template: str) -> Rawtext:
     """根据模板生成Rawtext"""
     return Rawtext(template_analysis(template))
+
+
+def template_addition(rawtext: Rawtext, template: str) -> None:
+    """根据模板生成TextComponents然后加入到对应的Rawtext"""
+    rawtext.add_sequence(template_analysis(template))

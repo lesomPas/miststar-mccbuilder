@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "miststar-mccbuilder"
-version = "0.3.2-alpha"
+version = "0.4.0-alpha"
 description = "Minecraft Command Builder"
 readme = "README.md"
 license = "MIT"
@@ -14,7 +14,6 @@ authors = [
     { name = "小白子lesomras", email = "lesomras@outlook.com" },
 ]
 dependencies = [
-    "blinker>=1.9.0",
     "path>=17.1.1",
 ]
 
@@ -26,6 +25,7 @@ Issues = "https://github.com/lesomPas/miststar-mccbuilder/issues"
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
+    "pyright>=1.1.407",
     "pytest>=9.0.2",
 ]
 
@@ -33,10 +33,12 @@ dev = [
 where = ["src/"]
 
 [tool.mypy]
-warn_return_any = false
-warn_unused_configs = false
-explicit_package_bases = false
-strict_equality = true            # 禁止可疑的 == 比较（如 str vs int）
-show_error_codes = true           # 显示错误码（方便搜索）
-pretty = true                     # 错误信息更友好
+python_version = "3.10"
+package_root = ["src", "tests"]
+show_error_codes = true
+pretty = true
 
+[tool.pyright]
+pythonVersion = "3.10"
+include = ["src", "tests"]
+typeCheckingMode = "standard"
