@@ -8,9 +8,9 @@ class TokensView(object):
         self.tokenized_content = tokenized_content
         self.start = start
         self.end = end
-        self.cache_string = tokenized_content.content[
-            tokenized_content.get_token_head(start) : tokenized_content.get_token_head(end)
-        ]
+        self.start_index = tokenized_content.get_token_head(start)
+        self.end_index = tokenized_content.get_token_head(end)
+        self.cache_string = tokenized_content.content[self.start_index : self.end_index]
 
     def is_empty(self) -> bool:
         return self.start >= self.end

@@ -2,8 +2,6 @@
 import json
 from pathlib import Path
 
-from miststar.internal.exceptions import MalformedArgument
-
 class JsonSerializer(object):
     """JSON序列化器"""
 
@@ -13,7 +11,7 @@ class JsonSerializer(object):
         try:
             return json.loads(json_str)
         except json.JSONDecodeError as e:
-            raise MalformedArgument(f"无效的JSON: {e}") from e
+            raise ValueError(f"无效的JSON: {e}") from e
 
     @staticmethod
     def load(file_path: str | Path):
@@ -26,7 +24,7 @@ class JsonSerializer(object):
             try:
                 return json.load(f)
             except json.JSONDecodeError as e:
-                raise MalformedArgument(f"文件中的JSON无效: {e}") from e
+                raise ValueError(f"文件中的JSON无效: {e}") from e
 
     @staticmethod
     def dumps(data, indent: int = 2, ensure_ascii: bool = False) -> str:

@@ -1,7 +1,7 @@
 # create by lesomras on 2025-12-13
 
 from .exceptions import MissingArgument, UnsupportedArgument, MalformedArgument
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 def is_value(d: dict, key: str, data_type: type) -> bool:
     """检查一个字典中是否有指定的键, 且该键指向的类型为data_type"""
@@ -9,9 +9,9 @@ def is_value(d: dict, key: str, data_type: type) -> bool:
         raise UnsupportedArgument("Exception parameter type")
     return key in d and isinstance(d[key], data_type)
 
-def list_of(sequence: list, data_type: type) -> bool:
+def iterable_of(sequence: Iterable, data_type: type | tuple) -> bool:
     """检查一个列表是否为一个data_type泛型列表"""
-    if not isinstance(sequence, list) or not isinstance(data_type, type):
+    if not isinstance(sequence, Iterable):
         raise UnsupportedArgument("Exception parameter type")
     return all(isinstance(i, data_type) for i in sequence)
 

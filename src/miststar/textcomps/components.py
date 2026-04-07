@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import Union, Optional, Callable, Literal
 
-from miststar.internal.dict_checking import is_value, list_of, matching
+from miststar.internal.dict_checking import is_value, iterable_of, matching
 from miststar.internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
 
 segmentation = "[]."
@@ -45,7 +45,7 @@ class Rawtext(TextComponent):
     def __init__(self, sequence: Optional[list[TextComponent]] = None) -> None:
         """实现由TextComponent列表到Rawtext的转换"""
         sequence = sequence if sequence is not None else []
-        if not list_of(sequence, TextComponent):
+        if not iterable_of(sequence, TextComponent):
             raise UnsupportedArgument("Sequence must be None or a list of TextComponent")
         self._data = sequence
 
@@ -68,48 +68,53 @@ class Rawtext(TextComponent):
 
     def add(self, *args) -> "Rawtext":
         """将一个文本组件加入到Rawtext中"""
-        for obj in args:
-            if not isinstance(obj, TextComponent):
-                raise TypeError("arguments must be subclass of TextComponent")
-            self._data.append(obj)
+        if not iterable_of(args, TextComponent):
+            raise UnsupportedArgument("arguments must be subclass of TextComponent")
+        self._data.extend(args)
         return self
 
     def adx(self, *args) -> "Rawtext":
         """将一个特定形式的字符串解析为文本组件加入到Rawtext中, 若本来就是文本组件则直接加入"""
+        if not iterable_of(args, (str, TextComponent)):
+            raise UnsupportedArgument("arguments must be subclass of TextComponent")
+
         for sentence in args:
             # TextComponent
             if isinstance(sentence, TextComponent):
-                self.add(sentence)
+                self._data.append(sentence)
                 continue
 
             sentence_type, sentence_data = infer_type(sentence)
             match sentence_type:
                 case "text":
-                    self.add(Text(sentence_data[0]))
+                    self._data.append(Text(sentence_data[0]))
                 case "selector":
-                    self.add(Selector(sentence_data[0]))
+                    self._data.append(Selector(sentence_data[0]))
                 case "score":
-                    self.add(Score(sentence_data[0], sentence_data[1]))
+                    self._data.append(Score(sentence_data[0], sentence_data[1]))
         return self
 
 
     def add_sequence(self, sequence: list[TextComponent]) -> "Rawtext":
         """将一个泛型列表中的文本组件按顺序加入"""
-        return self.add(*sequence)
+        if not iterable_of(sequence, TextComponent):
+            raise UnsupportedArgument("arguments must be subclass of TextComponent")
+        self._data.extend(sequence)
+        return self
 
     def get_data(self) -> list[TextComponent]:
         return self._data.copy()
 
     def text(self, content: str) -> "Rawtext":
-        self.add(Text(content))
+        self._data.append(Text(content))
         return self
 
     def score(self, name: str, objective: str) -> "Rawtext":
-        self.add(Score(name, objective))
+        self._data.append(Score(name, objective))
         return self
 
     def selector(self, content: str) -> "Rawtext":
-        self.add(Selector(content))
+        self._data.append(Selector(content))
         return self
 
     def translate(self, translate: str) -> "TranslateBuilder":
@@ -196,29 +201,24 @@ class TranslateBuilder(object):
 
     def build(self, *args) -> Rawtext:
         if args == ():
-            return self.raw.add(Translate(self.translate))
-
-        if any(not isinstance(i, TextComponent) for i in args):
-            raise UnsupportedArgument("Build failed! Parameters must be a subclass of TextComponent")
-
-        withraw = Rawtext().add(*args)
-        return self.raw.add(Translate(self.translate, with_content = withraw))
+            self.raw.add(Translate(self.translate))
+            return self.raw
+        self.raw._data.append(Translate(self.translate, with_content = Rawtext(list(args))))
+        return self.raw
 
     def build_adx(self, *args) -> Rawtext:
         if args == ():
-            return self.raw.add(Translate(self.translate))
-
-        withraw = Rawtext().adx(*args)
-        return self.raw.add(Translate(self.translate, with_content = withraw))
+            self.raw._data.append(Translate(self.translate))
+            return self.raw
+        self.raw._data.append(Translate(self.translate, with_content = Rawtext().adx(*args)))
+        return self.raw
 
     def string_build(self, *args) -> Rawtext:
         if args == ():
-            return self.raw.add(Translate(self.translate))
-
-        if any(not isinstance(i, str) for i in args):
-            raise UnsupportedArgument("Build failed! Parameters must be a string")
-
-        return self.raw.add(Translate(self.translate, string_sequence = list(args)))
+            self.raw._data.append(Translate(self.translate))
+            return self.raw
+        self.raw._data.append(Translate(self.translate, string_sequence = list(args)))
+        return self.raw
 
     def sequence_build(self, sequence: list[TextComponent]) -> Rawtext:
         return self.build(*sequence)
@@ -352,8 +352,8 @@ class Selector(TextComponent):
         """实现由参数到Selector的转换"""
         if not isinstance(content, str):
             raise UnsupportedArgument("Content must be a string")
-        if infer_type(content)[0] != "selector":
-            raise MalformedArgument(f"invalid selector parameter: {content}")
+        # if infer_type(content)[0] != "selector":
+        #     raise MalformedArgument(f"invalid selector parameter: {content}")
         self.content = content
 
     @classmethod
@@ -411,7 +411,7 @@ class Translate(TextComponent):
             return
 
         if string_sequence is not None:
-            if not list_of(string_sequence, str):
+            if not iterable_of(string_sequence, str):
                 raise UnsupportedArgument("'string_sequence' must be list of strings")
             self.string_sequence = string_sequence
 
@@ -441,7 +441,7 @@ class Translate(TextComponent):
         with_value = dictionary["with"]
         if isinstance(with_value, dict):
             return cls(translate, with_content = Rawtext.from_dictionary(with_value))
-        elif list_of(with_value, str):
+        elif iterable_of(with_value, str):
             return cls(translate, string_sequence = with_value)
         else:
             raise UnsupportedArgument("'with' must be a list of strings or a dictionary")
@@ -456,7 +456,7 @@ class Translate(TextComponent):
             return Translate._to_dictionary(translate, with_content = with_content)
 
         elif string_sequence is not None:
-            if not list_of(string_sequence, str):
+            if not iterable_of(string_sequence, str):
                 raise UnsupportedArgument("'string_sequence' must be list of strings")
             return Translate._to_dictionary(translate, string_sequence = string_sequence)
 
@@ -595,7 +595,7 @@ def _array_processing(dictionary: dict) -> dict:
 
 def rawtext_lexer(sequence: list[dict]) -> list[TextComponent]:
     """这样由字典组成的列表转化为由文本组件组成的列表"""
-    if not list_of(sequence, dict):
+    if not iterable_of(sequence, dict):
         raise UnsupportedArgument("dictionary error")
 
     results: list[TextComponent] = []
