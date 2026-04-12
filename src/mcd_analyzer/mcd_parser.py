@@ -80,6 +80,7 @@ class MCDParser:
         label_function = False
         label_end = False
 
+        ln = 1
         for ln, content in enumerate(self.lines, start=1):
             if ln in self._meta_info_idx:
                 continue
@@ -155,6 +156,7 @@ class MCDParser:
         label_function = False
         label_end = False
 
+        ln = 1
         for ln, content in enumerate(self.lines, start=1):
             if ln in self._meta_info_idx:
                 continue
