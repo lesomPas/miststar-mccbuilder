@@ -1,3 +1,4 @@
+# create by lesomras on 2025-12-14
 """
 Minecraft Rawtext JSON Processor
 用于处理Minecraft基岩版原始JSON文本格式

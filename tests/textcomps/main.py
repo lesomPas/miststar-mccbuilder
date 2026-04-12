@@ -1,4 +1,4 @@
-from miststar.textcomps import template_builder
+from textcomps import template_builder
 t = "Coins: {coins[].@s}, Credits: {credits[].@s}"
 r = template_builder(t)
 

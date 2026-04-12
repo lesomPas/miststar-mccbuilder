@@ -1,6 +1,6 @@
-from miststar.localenv.localenv import LocalEnv
-from miststar.localenv.player import Player
-from miststar.serializer import JsonSerializer
+from localenv.localenv import LocalEnv
+from localenv.player import Player
+from serializer import JsonSerializer
 
 le = LocalEnv()
 

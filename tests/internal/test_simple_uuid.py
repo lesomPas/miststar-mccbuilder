@@ -1,5 +1,5 @@
 # test 1
-from miststar.internal.simple_uuid import new_uuid, UUIDSpace
+from internal.simple_uuid import new_uuid, UUIDSpace
 import pytest
 
 @pytest.fixture

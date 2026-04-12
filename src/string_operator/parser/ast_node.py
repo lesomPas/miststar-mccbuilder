@@ -65,7 +65,7 @@ class ASTNode(object):
                  tokens: TokensView, 
                  error_reason: Optional[ErrorReason] = None, 
                  ast_node_id: ASTNodeId = ASTNodeId.NoneId) -> ASTNode:
-        return 
+        ...
 
 """
     // TODO 为什么当时我用的是char*，而不是std::shared_ptr<ErrorReason>

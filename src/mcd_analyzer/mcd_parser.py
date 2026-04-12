@@ -1,8 +1,8 @@
+# create by lesomras on 2026-4-12
+import re
 from typing import Optional
-from ..utils.reporter import (
-    print_error_with_context,
-    print_warning_with_context,
-)
+
+from ..utils.reporter import Reporter
 from .mcd import (
     BlockType,
     MCDMeta,
@@ -14,8 +14,7 @@ from .mcd import (
     MCDChain,
     MCD,
 )
-
-import re
+from .exceptions import MCDParsingException
 
 class MCDParser:
     def __init__(
@@ -24,16 +23,24 @@ class MCDParser:
         enable_warning: bool = True,
         strict_mode: bool = True,
     ) -> None:
+        """
+        MCD 文本分析器
+        @parameters:
+          document: 原始文档内容
+          enable_warning: 启用警告 (strict_mode 默认启用)
+          strict_mode: 严格模式, 启用错误. 解析失败不返回解析结果.
+        """
+        self.reporter = Reporter()
+
         self.lines = document.splitlines()
         self.mcd_version = 1
 
         self.enable_warning = enable_warning
         self.strict_mode = strict_mode
-        self.had_error = False
 
         self._metadata()
 
-    def parse(self) -> Optional[MCD]:
+    def parse(self) -> MCD:
         """ 解析函数，根据mcd版本自动选择按照哪个版本解析 """
         if self.mcd_version == 2:
             return self.parse_v2()
@@ -72,7 +79,7 @@ class MCDParser:
             )
             self._meta_info_idx.append(ln)
 
-    def parse_v1(self) -> Optional[MCD]:
+    def parse_v1(self) -> MCD:
         """ 按照MCDv1解析文档内容 """
         root_comments = []
         current_chain = MCDChain(name = "分离的命令")
@@ -127,9 +134,7 @@ class MCDParser:
         if not label_end:
             self._report(ln, 0, 0, "Expected the label ###End###")
 
-        if self.had_error:
-            return None
-
+        self.reporter.done(MCDParsingException)
         return MCD(
             meta_info = self.meta_info,
             root_comments = root_comments,
@@ -137,7 +142,7 @@ class MCDParser:
             is_v2 = False,
         )
 
-    def parse_v2(self) -> Optional[MCD]:
+    def parse_v2(self) -> MCD:
         """ 按照MCDv2解析文档内容，方块状态处理函数由strict_mode决定 """
         root_comments = []
         chains = []
@@ -254,9 +259,7 @@ class MCDParser:
         if not label_end:
             self._report(ln, 0, 0, "Expected the label ###End###")
 
-        if self.had_error:
-            return None
-
+        self.reporter.done(MCDParsingException)
         return MCD(
             meta_info = self.meta_info,
             root_comments = root_comments,
@@ -329,13 +332,20 @@ class MCDParser:
             return (pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
 
         match state_str[pointer].upper():
-            case "C" | "_": pending_block_type = BlockType.Chain #(default)
-            case "R": pending_block_type = BlockType.Repeat
-            case "I": pending_block_type = BlockType.Impulse
+            case "C" | "_": 
+                pending_block_type = BlockType.Chain #(default)
+                pointer += 1
+            case "R": 
+                pending_block_type = BlockType.Repeat
+                pointer += 1
+            case "I": 
+                pending_block_type = BlockType.Impulse
+                pointer += 1
+            case "?" | "!" | "T":
+                pending_block_type = BlockType.Chain
             case _:
-                error_at(pointer, "Expected block type ('I', 'R' or 'C')")
+                error_at(pointer, "Expected block type ('I', 'R' or 'C'), or to ignore it ('_')")
                 return None
-        pointer += 1
 
         # parse conditional
         if state_str_len <= pointer:
@@ -363,17 +373,17 @@ class MCDParser:
         c = state_str[pointer]
         match c:
             case "!":
-                pending_always_active = False #(default)
-                pending_needs_redstone = True #(default)
+                pending_always_active = False
+                pending_needs_redstone = True
                 pointer += 1
             case "_":
-                pending_always_active = True
-                pending_needs_redstone = False
+                pending_always_active = True # (default)
+                pending_needs_redstone = False #(default)
                 pointer += 1
             case _:
                 if c.lower() == "t":
-                    pending_always_active = False #(default)
-                    pending_needs_redstone = True #(default)
+                    pending_always_active = True #(default)
+                    pending_needs_redstone = False #(default)
                 else:
                     error_at(pointer, "Expected the needs redstone comment ('!'), or to ignore it ('_')")
                     return None
@@ -417,7 +427,7 @@ class MCDParser:
     def _report_warning(self, line_no: int, start_char: int, end_char: int, message: str) -> None:
         if not self.enable_warning:
             return
-        print_warning_with_context(
+        self.reporter.print_warning_with_context(
             lines = self.lines,
             line_no = line_no,
             start_char = start_char,
@@ -427,7 +437,7 @@ class MCDParser:
         )
 
     def _report_error(self, line_no: int, start_char: int, end_char: int, message: str) -> None:
-        print_error_with_context(
+        self.reporter.print_error_with_context(
             lines = self.lines,
             line_no = line_no,
             start_char = start_char,
@@ -435,17 +445,3 @@ class MCDParser:
             message = message,
             # file_name = self.file_name
         )
-        self.had_error = True
-
-p = MCDParser(document="""
-@mcd_version = 2
---- ---
-> R
-> C
-> i__t_
-# ...
-""")
-
-from pprint import pp
-mcd = p.parse()
-pp(mcd)

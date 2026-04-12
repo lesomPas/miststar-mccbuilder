@@ -1,7 +1,7 @@
 # create by lesomras on 2025-12-30
 
-from miststar.internal.int32 import Int32
-from miststar.internal.simple_uuid import new_uuid
+from internal.int32 import Int32
+from internal.simple_uuid import new_uuid
 
 class Entity(object):
     def __init__(self, name: str) -> None:
