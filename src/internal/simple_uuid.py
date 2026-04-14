@@ -91,7 +91,7 @@ class UUIDSpace(Generic[T]):
             del self.mapping[_uuid]
             self.free_uuids.add(_uuid)
             return r
-        return None
+        return default
 
     def get_value(self, _uuid: str, default: Optional[T] = None) -> Optional[T]:
         return self.mapping.get(_uuid, default)
