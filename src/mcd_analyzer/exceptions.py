@@ -1,5 +1,5 @@
 # create by lesomras on 2026-4-12
-from ..exceptions import MiststarException
+from exceptions import MiststarException
 
 class MCDAnalyzerException(MiststarException):
     """ MCD 相关根异常 """

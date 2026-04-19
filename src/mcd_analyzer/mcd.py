@@ -8,6 +8,7 @@ class BlockType(StrEnum):
     Impulse = "脉冲"
     Chain = "连锁"
     Repeat = "循环"
+    CommandLine = "手动输入"
 
 @dataclass
 class MCDMeta:

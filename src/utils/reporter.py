@@ -176,6 +176,138 @@ class Reporter:
         warning_lines.append(_style(f"note: {message}", NOTE_STYLE) + "\n")
         self.warnings.append('\n'.join(warning_lines))
 
+    def print_error_line(
+        self,
+        lines: list[str],
+        line_no: int,
+        message: str,
+        context_lines: int = 2,
+        tab_width: int = 4,
+        file_name: str = "<input>"
+    ) -> None:
+        """生成只关联行号的错误信息（无下划线标记），并添加到 errors 列表。"""
+        error_lines = []
+        if line_no < 1 or line_no > len(lines):
+            error_lines.append(f"{file_name}: error: line {line_no} out of range")
+            self.errors.append('\n'.join(error_lines))
+            return
+
+        start_idx = max(0, line_no - 1 - context_lines)
+        end_idx = min(len(lines), line_no + context_lines)
+        max_line_num_width = len(str(end_idx))
+
+        loc = f"{file_name}:{line_no}"
+        error_lines.append(f"{_style(loc, BLUE)} {_style('error:', ERROR_STYLE)} {message}")
+
+        for i in range(start_idx, end_idx):
+            current_line_num = i + 1
+            raw_line = lines[i]
+            displayed_line = raw_line.expandtabs(tab_width)
+            line_num_str = f"{current_line_num:>{max_line_num_width}}"
+            error_lines.append(f"{_style(line_num_str, LINE_NUM_STYLE)} | {displayed_line}")
+
+        error_lines.append(_style(f"note: {message}", NOTE_STYLE) + "\n")
+        self.errors.append('\n'.join(error_lines))
+
+    def print_warning_line(
+        self,
+        lines: list[str],
+        line_no: int,
+        message: str,
+        context_lines: int = 2,
+        tab_width: int = 4,
+        file_name: str = "<input>"
+    ) -> None:
+        """生成只关联行号的警告信息（无下划线标记），并添加到 warnings 列表。"""
+        warning_lines = []
+        if line_no < 1 or line_no > len(lines):
+            warning_lines.append(f"{file_name}: warning: line {line_no} out of range")
+            self.warnings.append('\n'.join(warning_lines))
+            return
+
+        start_idx = max(0, line_no - 1 - context_lines)
+        end_idx = min(len(lines), line_no + context_lines)
+        max_line_num_width = len(str(end_idx))
+
+        loc = f"{file_name}:{line_no}"
+        warning_lines.append(f"{_style(loc, BLUE)} {_style('warning:', WARNING_STYLE)} {message}")
+
+        for i in range(start_idx, end_idx):
+            current_line_num = i + 1
+            raw_line = lines[i]
+            displayed_line = raw_line.expandtabs(tab_width)
+            line_num_str = f"{current_line_num:>{max_line_num_width}}"
+            warning_lines.append(f"{_style(line_num_str, LINE_NUM_STYLE)} | {displayed_line}")
+
+        warning_lines.append(_style(f"note: {message}", NOTE_STYLE) + "\n")
+        self.warnings.append('\n'.join(warning_lines))
+
+    def print_error_lines(
+        self,
+        lines: list[str],
+        start_line: int,
+        end_line: int,
+        message: str,
+        tab_width: int = 4,
+        file_name: str = "<input>"
+    ) -> None:
+        """报告一个连续行范围的错误（无高亮标记）。"""
+        error_lines = []
+        if start_line < 1 or end_line > len(lines) or start_line > end_line:
+            error_lines.append(f"{file_name}: error: invalid line range {start_line}-{end_line}")
+            self.errors.append('\n'.join(error_lines))
+            return
+
+        start_idx = max(0, start_line - 1)
+        end_idx = min(len(lines), end_line)   # 不包含
+        max_line_num_width = len(str(end_idx))
+
+        loc = f"{file_name}:{start_line}-{end_line}"
+        error_lines.append(f"{_style(loc, BLUE)} {_style('error:', ERROR_STYLE)} {message}")
+
+        for i in range(start_idx, end_idx):
+            current_line_num = i + 1
+            raw_line = lines[i]
+            displayed_line = raw_line.expandtabs(tab_width)
+            line_num_str = f"{current_line_num:>{max_line_num_width}}"
+            error_lines.append(f"{_style(line_num_str, LINE_NUM_STYLE)} | {displayed_line}")
+
+        error_lines.append(_style(f"note: {message}", NOTE_STYLE) + "\n")
+        self.errors.append('\n'.join(error_lines))
+
+    def print_warning_lines(
+        self,
+        lines: list[str],
+        start_line: int,
+        end_line: int,
+        message: str,
+        tab_width: int = 4,
+        file_name: str = "<input>"
+    ) -> None:
+        """报告一个连续行范围的警告（无高亮标记）。"""
+        warning_lines = []
+        if start_line < 1 or end_line > len(lines) or start_line > end_line:
+            warning_lines.append(f"{file_name}: warning: invalid line range {start_line}-{end_line}")
+            self.warnings.append('\n'.join(warning_lines))
+            return
+
+        start_idx = max(0, start_line - 1)
+        end_idx = min(len(lines), end_line)
+        max_line_num_width = len(str(end_idx))
+
+        loc = f"{file_name}:{start_line}-{end_line}"
+        warning_lines.append(f"{_style(loc, BLUE)} {_style('warning:', WARNING_STYLE)} {message}")
+
+        for i in range(start_idx, end_idx):
+            current_line_num = i + 1
+            raw_line = lines[i]
+            displayed_line = raw_line.expandtabs(tab_width)
+            line_num_str = f"{current_line_num:>{max_line_num_width}}"
+            warning_lines.append(f"{_style(line_num_str, LINE_NUM_STYLE)} | {displayed_line}")
+
+        warning_lines.append(_style(f"note: {message}", NOTE_STYLE) + "\n")
+        self.warnings.append('\n'.join(warning_lines))
+
     def done(self, exception: Type[Exception]) -> None:
         """
         结束收集：打印所有警告到 stderr，如果有错误则抛出异常
@@ -189,3 +321,7 @@ class Reporter:
         # 如果有错误，拼接所有错误信息后抛出异常（也输出到 stderr）
         if self.errors:
             raise exception('\n' + '\n'.join(self.errors))
+
+    def reset(self) -> None:
+        self.warnings.clear()
+        self.errors.clear()

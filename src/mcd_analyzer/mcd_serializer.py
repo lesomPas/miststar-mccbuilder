@@ -17,13 +17,18 @@ from .mcd_parser import MCDParser
 from .exceptions import MCDFormatException, MCDVersionException, MCDLoadingException
 
 class MCDEncoder(json.JSONEncoder):
-    """ 的MCD数据类及枚举序列化为JSON格式 """
+    """ MCD数据类及枚举序列化为JSON格式 """
     def default(self, o: Any) -> Any:
         if isinstance(o, BlockType):
             return o.name.lower()
         if isinstance(o, MCDMeta):
             return { "key": o.key, "value": o.value, }
         if isinstance(o, MCDBlock):
+            if o.type == BlockType.CommandLine:
+                return {
+                    "type": o.type.name.lower(),
+                    "command": o.command,
+                }
             return {
                 "type": o.type.name.lower(),
                 "conditional": o.conditional,
@@ -97,13 +102,15 @@ class MCDSerializer:
         document: str,
         version: Optional[int] = None,
         enable_warning: bool = True,
-        strict_mode: bool = True
+        strict_mode: bool = True,
+        relaxed: bool = True,
     ) -> MCD:
         """ 将字符串转换为MCD """
         parser = MCDParser(
             document = document,
             enable_warning = enable_warning,
             strict_mode = strict_mode,
+            relaxed = relaxed,
         )
         match version:
             case None: return parser.parse()
@@ -153,6 +160,10 @@ class MCDSerializer:
                                 case BlockType.Chain: state_str += 'C' # 一般来说方块类型不会使用省略符'_', 太不直观了
                                 case BlockType.Repeat: state_str += 'R'
                                 case BlockType.Impulse: state_str += 'I'
+                                case BlockType.CommandLine:
+                                    output_lines.append(f"> H")
+                                    output_lines.append(f"{block.command}")
+                                    continue
 
                         if self.full_state_string or block.conditional:
                             state_str += '?' if block.conditional else '_'

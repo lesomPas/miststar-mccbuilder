@@ -26,7 +26,7 @@ Issues = "https://github.com/lesomPas/miststar-mccbuilder/issues"
 [dependency-groups]
 dev = [
     "mypy>=1.19.1",
-    "pyright>=1.1.407",
+    "pyright>=1.1.408",
     "pytest>=9.0.2",
 ]
 

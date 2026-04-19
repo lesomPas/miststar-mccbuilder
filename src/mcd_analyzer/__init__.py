@@ -1,5 +1,6 @@
 # create by lesomras on 2026-4-12
 # 数据模型
+"""
 from .mcd import MCD, MCDChain, MCDBlock, MCDMeta, BlockType
 from .mcd import ChainItem, ChainItemComment, ChainItemRawCommand, ChainItemBlock
 
@@ -14,3 +15,4 @@ from .exceptions import (
     MCDFormatException,
     MCDLoadingException,
 )
+"""

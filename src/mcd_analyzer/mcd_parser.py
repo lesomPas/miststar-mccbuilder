@@ -1,8 +1,9 @@
 # create by lesomras on 2026-4-12
 import re
-from typing import Optional
+from typing import Optional, Union, NamedTuple
 
 from ..utils.reporter import Reporter
+from .source_code import Line, SourceCode
 from .mcd import (
     BlockType,
     MCDMeta,
@@ -14,7 +15,41 @@ from .mcd import (
     MCDChain,
     MCD,
 )
-from .exceptions import MCDParsingException
+from .exceptions import MCDParsingException, MCDFormatException, MCDVersionException
+
+class Comment(NamedTuple):
+    ln: Line
+    text: str
+
+
+class RawCommand(NamedTuple):
+    ln: Line
+    command: str
+
+
+class ChainLabel(NamedTuple):
+    ln: Line
+    name: str
+
+
+class CommandState(NamedTuple):
+    ln: Line
+    type: BlockType = BlockType.Chain
+    conditional: bool = False
+    always_active: bool = True
+    needs_redstone: bool = False
+    tick_delay: int = 0
+
+MCDToken = Union[Comment, RawCommand, ChainLabel, CommandState]
+
+class Label(NamedTuple):
+    ln: Line
+    name: str
+
+
+class TokenizeMCD(NamedTuple):
+    labels: list[Label]
+    tokens: list[MCDToken]
 
 class MCDParser:
     def __init__(
@@ -22,54 +57,75 @@ class MCDParser:
         document: str,
         enable_warning: bool = True,
         strict_mode: bool = True,
+        relaxed: bool = True,
     ) -> None:
         """
         MCD 文本分析器
-        @parameters:
-          document: 原始文档内容
-          enable_warning: 启用警告 (strict_mode 默认启用)
-          strict_mode: 严格模式, 启用错误. 解析失败不返回解析结果.
+
+        @param document: 原始 MCD 文档内容（字符串）
+        @param enable_warning: 是否启用警告输出，默认为 True
+        @param strict_mode: 是否启用严格模式（格式错误会报错），默认为 True
+        @param relaxed: 是否宽松模式（容忍某些非标准行为），默认为 True
         """
         self.reporter = Reporter()
 
-        self.lines = document.splitlines()
-        self.mcd_version = 1
+        self.source_code = SourceCode(document)
+        self.mcd_version = -1
 
         self.enable_warning = enable_warning
         self.strict_mode = strict_mode
+        self.relaxed = relaxed
 
+        self.meta_info: list[MCDMeta] = []
+        self._meta_info_idx: list[int] = [] # 1-based
+
+    def _init(self) -> TokenizeMCD:
+        """内部初始化：执行元数据解析并返回词法分析结果。"""
         self._metadata()
+        return self._tokenize()
 
     def parse(self) -> MCD:
-        """ 解析函数，根据mcd版本自动选择按照哪个版本解析 """
-        if self.mcd_version == 2:
-            return self.parse_v2()
-        else:
-            return self.parse_v1()
+        """
+        解析函数，根据 mcd_version 自动选择按照哪个版本解析。
+
+        @return: 解析得到的 MCD 对象
+        @raises MCDParsingException: 当解析过程中存在错误且 strict_mode 为 True 时抛出
+        """
+        return self._semantic_analysis(self._init(), version = self.mcd_version)
+
+    def parse_v1(self) -> MCD:
+        """强制按照 MCD v1 格式解析文档。"""
+        return self._semantic_analysis(self._init(), version = 1)
+
+    def parse_v2(self) -> MCD:
+        """强制按照 MCD v2 格式解析文档。"""
+        return self._semantic_analysis(self._init(), version = 2)
 
     def _metadata(self) -> None:
-        """ 解析metadata字段，形如"@key = value"。同时判断版本 """
-        self.meta_info = []
-        self._meta_info_idx = [] # 1-indexed
-
-        for ln, content in enumerate(self.lines, start=1):
-            if (not content) or content.isspace():
+        """
+        解析 metadata 字段，形如 "@key = value"。
+        同时根据 @mcd_version 判断版本（1 或 2）。
+        """
+        for l in self.source_code.lines:
+            if (not l.content.startswith("@")) or (split_idx := l.content.find("=")) == -1:
                 continue
 
-            l_content = content.lstrip()
-            if (not l_content.startswith("@")) or (split_idx := l_content.find("=")) == -1:
+            key = l.content[1:split_idx].strip()
+            value = l.content[split_idx+1:].strip()
+
+            e = False
+            if key == "" and self._report(l, "Metadata key is empty", *l.left_relative_range(1, split_idx - 1)):
+                e = True
+            if value == "" and self._report(l, "Metadata value is empty", *l.left_relative_range(split_idx + 1, len(l.original_content) - 1)):
+                e = True
+            if e:
                 continue
 
-            start_idx = len(content) - len(l_content)
-            key = l_content[1:split_idx].strip()
-            value = l_content[split_idx+1:].strip()
-
-            if key == "" and self._report(ln, start_idx+1, split_idx, "Metadata key is empty"):
-                continue
-            if value == "" and self._report(ln, start_idx+split_idx+1, len(content), "Metadata value is empty"):
-                continue
-            if key == "mcd_version" and value == "2":
-                self.mcd_version = 2
+            if key == "mcd_version":
+                if value == "2":
+                    self.mcd_version = 2
+                elif value == "1":
+                    self.mcd_version = 1
 
             self.meta_info.append(
                 MCDMeta(
@@ -77,205 +133,97 @@ class MCDParser:
                     value = value
                 )
             )
-            self._meta_info_idx.append(ln)
+            self._meta_info_idx.append(l.ln)
 
-    def parse_v1(self) -> MCD:
-        """ 按照MCDv1解析文档内容 """
-        root_comments = []
-        current_chain = MCDChain(name = "分离的命令")
+        if self.mcd_version == -1:
+            self.mcd_version = 1
 
+    def _tokenize(self) -> TokenizeMCD:
+        """
+        词法分析：将源码行转换为 Token 流。
+
+        @return: TokenizeMCD 对象，包含 labels 列表和 tokens 列表
+        """
+        labels: list[Label] = []
+        tokens: list[MCDToken] = []
+
+        chain_count = 1
         label_function = False
         label_end = False
 
-        ln = 1
-        for ln, content in enumerate(self.lines, start=1):
-            if ln in self._meta_info_idx:
-                continue
-
-            l_content = content.lstrip()
-            start_idx = len(content) - len(l_content)
-            lr_content = l_content.rstrip()
-            end_idx = start_idx + len(lr_content) - 1 # 包括最后一个字符
-
-            if not lr_content:
+        for l in self.source_code.lines:
+            if l.ln in self._meta_info_idx:
                 continue
 
             # ###Function### / ###End###
-            if lr_content.startswith("###") and lr_content.endswith("###"):
-                label_name = lr_content[3:-3].strip().lower()
+            if l.content.startswith("###") and l.content.endswith("###"):
+                label_name = l.content[3:-3].strip().lower()
+                if label_name == "":
+                    label_name = "未命名标签"
+                    self._report(l, "Label name is empty", *l.relative_range(3, 3))
 
-                if label_name == "function":
-                    label_function = True
-                elif label_name == "end":
-                    label_end = True
+                labels.append(Label(l, label_name))
+                continue
+
+            # comment
+            if l.content.startswith("#"):
+                comment_text = l.content[1:].lstrip()
+                tokens.append(Comment(l, comment_text))
+                continue
+
+            # v1 command
+            if self.mcd_version == 1:
+                # 将前部有斜杠或者英文字母的文本视为命令，否则视为隐式注释
+                first_char = l.content[0]
+                if first_char == '/' or (first_char.isalpha() and ord(first_char) < 128):
+                        tokens.append(RawCommand(l, l.content))
                 else:
-                    self._report(ln, start_idx + 3, end_idx - 2, "Label name must be 'Function' or 'End'.")
+                    tokens.append(Comment(l, l.content))
+                    self._report_line(l.ln, "Comments need to be displayed")
                 continue
 
-            # #comment
-            if lr_content.startswith("#"):
-                comment_text = lr_content[1:].lstrip()
-                if current_chain is not None:
-                    current_chain.items.append(ChainItemComment(text = comment_text))
-                else:
-                    root_comments.append(comment_text)
-                continue
-
-            # 将前部有斜杠或者英文字母的文本视为命令，否则视为隐式注释
-            first_char = lr_content[0]
-            if first_char == '/' or (first_char.isalpha() and ord(first_char) < 128):
-                    current_chain.items.append(ChainItemRawCommand(command=lr_content))
-            else:
-                current_chain.items.append(ChainItemComment(text=lr_content))
-                self._report(ln, 0, len(content), "Comments need to be displayed")
-
-        if not label_function:
-            self._report(1, 0, 0, "Expected the label ###Function###")
-        if not label_end:
-            self._report(ln, 0, 0, "Expected the label ###End###")
-
-        self.reporter.done(MCDParsingException)
-        return MCD(
-            meta_info = self.meta_info,
-            root_comments = root_comments,
-            chains = [current_chain, ],
-            is_v2 = False,
-        )
-
-    def parse_v2(self) -> MCD:
-        """ 按照MCDv2解析文档内容，方块状态处理函数由strict_mode决定 """
-        root_comments = []
-        chains = []
-
-        current_chain: Optional[MCDChain] = None
-
-        pending_block_type = BlockType.Chain
-        pending_conditional = False
-        pending_always_active = True
-        pending_needs_redstone = False
-        pending_tick_delay = 0
-        has_pending_state = False
-        #                        ln,  length
-        pending_state_str: tuple[int, int] = (0, 0)
-
-        label_function = False
-        label_end = False
-
-        ln = 1
-        for ln, content in enumerate(self.lines, start=1):
-            if ln in self._meta_info_idx:
-                continue
-
-            l_content = content.lstrip()
-            start_idx = len(content) - len(l_content)
-            lr_content = l_content.rstrip()
-            end_idx = start_idx + len(lr_content) - 1 # 包括最后一个字符
-
-            if not lr_content:
-                continue
-
-            # ###Function### / ###End###
-            if lr_content.startswith("###") and lr_content.endswith("###"):
-                label_name = lr_content[3:-3].strip().lower()
-
-                if label_name == "function":
-                    label_function = True
-                elif label_name == "end":
-                    label_end = True
-                else:
-                    self._report(ln, start_idx + 3, end_idx - 2, "Label name must be 'Function' or 'End'.")
+            # v2 only
+            if self.mcd_version != 2:
                 continue
 
             # ---Chain Name---
-            if lr_content.startswith("---") and lr_content.endswith("---"):
-                chain_name = lr_content[3:-3].strip()
-
+            if l.content.startswith("---") and l.content.endswith("---"):
+                chain_name = l.content[3:-3].strip()
                 if chain_name == "":
-                    chain_name = "未命名命令链"
-                    self._report(ln, start_idx + 3, end_idx - 2, "Chain name is empty")
+                    chain_name = f"Chain {chain_count}"
+                    chain_count += 1
+                    self._report(l, "Chain name is empty", *l.relative_range(3, 3))
 
-                current_chain = MCDChain(name = chain_name)
-                chains.append(current_chain)
-                has_pending_state = False
-                continue
-
-            # #comment
-            if lr_content.startswith("#"):
-                comment_text = lr_content[1:].lstrip()
-                if current_chain is not None:
-                    current_chain.items.append(ChainItemComment(text = comment_text))
-                else:
-                    root_comments.append(comment_text)
+                tokens.append(ChainLabel(l, chain_name))
                 continue
 
             # > state
-            if lr_content.startswith(">"):
-                if has_pending_state:
-                    self._report(pending_state_str[0], 0, pending_state_str[1], "Unused state comment")
-                state_str = lr_content[1:].lstrip()
+            if l.content.startswith(">"):
+                state_str = l.content[1:].lstrip()
 
                 if self.strict_mode:
-                    state_start_idx = len(lr_content) - len(state_str)
-                    result = self._parse_state_strictly(state_str, ln, start_idx + state_start_idx)
+                    spaces_offset = len(l.content) - len(state_str)
+                    result = self._parse_state_strictly(state_str, l, spaces_offset)
                 else:
-                    result = self._parse_state(state_str)
+                    result = self._parse_state(state_str, l)
 
                 if result is not None:
-                    pending_block_type, \
-                    pending_conditional, \
-                    pending_always_active, \
-                    pending_needs_redstone, \
-                    pending_tick_delay = result
-
-                    has_pending_state = True
-                    pending_state_str = (ln, len(content))
+                    tokens.append(result)
                 continue
 
-            if current_chain is None:
-                current_chain = MCDChain(name = "分离的命令")
-                chains.append(current_chain)
-                self._report_warning(ln, 0, len(content), "Chain name is required")
-
-            if has_pending_state:
-                block = MCDBlock(
-                    type = pending_block_type,
-                    conditional = pending_conditional,
-                    always_active = pending_always_active,
-                    needs_redstone = pending_needs_redstone,
-                    tick_delay = pending_tick_delay,
-                    command = lr_content,
-                )
-            else:
-                block = MCDBlock(command = lr_content)
-
-            current_chain.items.append(ChainItemBlock(block = block))
-            has_pending_state = False
-
-        if has_pending_state:
-            self._report(pending_state_str[0], 0, pending_state_str[1], "No command matched the state comment")
-
-        if not label_function:
-            self._report(1, 0, 0, "Expected the label ###Function###")
-        if not label_end:
-            self._report(ln, 0, 0, "Expected the label ###End###")
+            # 理论上可以将任何东西作为命令, 这个检查之后再做
+            tokens.append(RawCommand(l, l.content))
 
         self.reporter.done(MCDParsingException)
-        return MCD(
-            meta_info = self.meta_info,
-            root_comments = root_comments,
-            chains = chains,
-            is_v2 = True,
-        )
+        return TokenizeMCD(labels, tokens)
 
-    def _parse_state(self, state_str: str) -> tuple[BlockType, bool, bool, bool, int]:
+    def _parse_state(self, state_str: str, l: Line) -> CommandState:
         """
-        接受状态str并进行简单解析, 解析总是成功.
-        @return:
-          tuple.0: block type
-          tuple.1: conditional
-          tuple.2: always active
-          tuple.3: needs redstone
-          tuple.4: tick delay
+        接受状态字符串并进行简单解析（宽松模式），解析总是成功。
+
+        @param state_str: 状态字符串（如 "I?t5"）
+        @param l: 所在行的 Line 对象
+        @return: CommandState 对象，包含解析后的方块状态
         """
         state_upper = state_str.upper()
         if "I" in state_upper:
@@ -295,7 +243,8 @@ class MCDParser:
         else:
             pending_tick_delay = 0
 
-        return (
+        return CommandState(
+            l,
             pending_block_type,
             pending_conditional,
             pending_always_active,
@@ -303,20 +252,28 @@ class MCDParser:
             pending_tick_delay,
         )
 
-    def _parse_state_strictly(self, state_str: str, line_no: int, state_start_col: int) -> Optional[tuple[BlockType, bool, bool, bool, int]]:
+    def _parse_state_strictly(self, state_str: str, l: Line, spaces_offset: int) -> Optional[CommandState]:
         """
-        接受状态str并进行严格解析, 解析失败返回None.
-        @return:
-          tuple.0: block type
-          tuple.1: conditional
-          tuple.2: always active
-          tuple.3: needs redstone
-          tuple.4: tick delay
+        接受状态字符串并进行严格解析，解析失败返回 None。
+
+        @param state_str: 状态字符串
+        @param l: 所在行的 Line 对象
+        @param spaces_offset: state_str 在原始行中的起始偏移（字符数）
+        @return: 解析成功返回 CommandState，失败返回 None
         """
         def error_at(offset: int, msg: str) -> None:
-            col = state_start_col + offset
-            end_col = col + 1
-            self._report_error(line_no, col, col + 1, msg)
+            col = spaces_offset + offset
+            self._report_error(l, msg, *l.left_relative_len_range(col, 1))
+
+        def error_remaining(offset: int, msg: str) -> None:
+            col = spaces_offset + offset
+            self._report_error(l, msg, *l.relative_range(col, 0))
+
+        def check_remaining(offset: int, location: str) -> bool:
+            if offset < state_str_len:
+                error_remaining(offset, f"Unexpected characters after {location}")
+                return True
+            return False
 
         state_str_len = len(state_str)
 
@@ -329,18 +286,24 @@ class MCDParser:
         pointer = 0
         # parse block type
         if state_str_len == 0: # <=> state_str_len <= pointer
-            return (pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
+            return CommandState(l, pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
 
         match state_str[pointer].upper():
-            case "C" | "_": 
+            case "C" | "_":
                 pending_block_type = BlockType.Chain #(default)
                 pointer += 1
-            case "R": 
+            case "R":
                 pending_block_type = BlockType.Repeat
                 pointer += 1
-            case "I": 
+            case "I":
                 pending_block_type = BlockType.Impulse
                 pointer += 1
+            case "H":
+                pending_block_type = BlockType.CommandLine
+                pointer += 1
+                if check_remaining(pointer, "'H' (CommandLine Mode)"):
+                    return None
+                return CommandState(l, pending_block_type)
             case "?" | "!" | "T":
                 pending_block_type = BlockType.Chain
             case _:
@@ -349,7 +312,7 @@ class MCDParser:
 
         # parse conditional
         if state_str_len <= pointer:
-            return (pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
+            return CommandState(l, pending_block_type)
 
         c = state_str[pointer]
         match c:
@@ -363,12 +326,12 @@ class MCDParser:
                 if c == "!" or c.lower() == "t":
                     pending_conditional = False #(default)
                 else:
-                    error_at(pointer, "Expected the conditional comment ('?'), or to ignore it ('_')")
+                    error_at(pointer, "Expected conditional comment ('?'), or to ignore it ('_')")
                     return None
 
         # parse always_active / needs redstone
         if state_str_len <= pointer:
-            return (pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
+            return CommandState(l, pending_block_type, pending_conditional)
 
         c = state_str[pointer]
         match c:
@@ -385,25 +348,27 @@ class MCDParser:
                     pending_always_active = True #(default)
                     pending_needs_redstone = False #(default)
                 else:
-                    error_at(pointer, "Expected the needs redstone comment ('!'), or to ignore it ('_')")
+                    error_at(pointer, "Expected needs redstone comment ('!'), or to ignore it ('_')")
                     return None
 
         # parse tick delay
         if state_str_len <= pointer:
-            return (pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
+            return CommandState(l, pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone)
 
         c = state_str[pointer]
         if c.lower() != "t":
-            error_at(pointer, "Expected the delay tick comment ('t')")
+            error_at(pointer, "Expected delay tick comment ('t')")
             return None
         pointer += 1
 
         if state_str_len <= pointer:
-            error_at(pointer - 1, f"Expected the delay tick after '{c}'")
+            error_at(pointer - 1, f"Expected delay tick after '{c}'")
             return None
 
         if state_str[pointer] == "_":
-            return (pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
+            if check_remaining(pointer, "delay tick"):
+                return None
+            return CommandState(l, pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
 
         start_pointer = pointer
         while state_str_len > pointer:
@@ -414,34 +379,263 @@ class MCDParser:
             pointer += 1
 
         pending_tick_delay = int(state_str[start_pointer:pointer])
-        return (pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
+        if check_remaining(pointer, "delay tick"):
+            return None
 
-    def _report(self, line_no: int, start_char: int, end_char: int, message: str) -> bool:
-        if self.strict_mode:
-            self._report_error(line_no, start_char, end_char, message)
+        return CommandState(l, pending_block_type, pending_conditional, pending_always_active, pending_needs_redstone, pending_tick_delay)
+
+    def _semantic_analysis(self, tokenize_mcd: TokenizeMCD, version: int) -> MCD:
+        """
+        语义分析：将 Token 流转换为 MCD 对象。
+
+        @param tokenize_mcd: 词法分析结果，包含 labels 和 tokens
+        @param version: 要使用的 MCD 版本（1 或 2）
+        @return: 构建完成的 MCD 对象
+        @raises MCDParsingException: 当存在错误且 strict_mode 为 True 时抛出
+        """
+        self.reporter.reset()
+        # state
+        pointer = 0
+        tokens = tokenize_mcd.tokens
+
+        label_function, label_end = self._analysis_labels(tokenize_mcd.labels)
+        if label_function is None:
+            start_ln = tokens[0].ln.ln if tokens else 0
+            end_ln = label_end.ln.ln if label_end is not None else len(self.source_code.original_lines)
+            self._report_lines(start_ln, end_ln, "Expected the label 'End' before commands")
+
+        if label_end is None:
+            ln = tokens[-1].ln.ln if tokens else len(self.source_code.original_lines)
+            self._report_line(ln, "Expected label 'End' after commands")
+
+        elif tokens and tokens[-1].ln.ln > label_end.ln.ln:
+            self._report_lines(label_end.ln.ln, tokens[-1].ln.ln, "Unexpected commands after label 'End'")
+
+        root_comments = []
+        for token in tokens:
+            if not isinstance(token, Comment):
+                break
+            root_comments.append(token.text)
+
+        match version:
+            case 1:
+                chains = self._analysis_v1(tokens)
+            case 2:
+                chains = self._analysis_v2(tokens)
+            case _:
+                raise MCDVersionException(f"Invalid MCD version: {version}")
+
+        self.reporter.done(MCDParsingException)
+        return MCD(
+            meta_info = self.meta_info,
+            root_comments = root_comments,
+            chains = chains,
+            is_v2 = self.mcd_version == 2,
+        )
+
+    def _analysis_labels(self, labels: list[Label]) -> tuple[Optional[Label], Optional[Label]]:
+        """
+        分析标签列表，检查合法性、重复性，并返回第一个 function 标签和最后一个 end 标签。
+
+        @param labels: Label 对象列表
+        @return: (func_label, end_label)，若不存在则为 None
+        """
+        func_label = None
+        end_label = None
+
+        for lbl in labels:
+            name = lbl.name
+            if name == "function":
+                if func_label is not None:
+                    self._report_line(lbl.ln.ln, "Duplicate label 'Function'")
+                else:
+                    func_label = lbl
+            elif name == "end":
+                if end_label is not None:
+                    self._report_line(end_label.ln.ln, "Duplicate label 'End'")
+                end_label = lbl
+            else:
+                self._report_line(lbl.ln.ln, f"Invalid label name '{name}', expected 'Function' or 'End'")
+        return func_label, end_label
+
+    def _analysis_v1(self, tokens: list[MCDToken]) -> list[MCDChain]:
+        """
+        v1 语义分析：将所有 RawCommand 和 Comment 放入一个默认链。
+
+        @param tokens: MCDToken 列表
+        @return: 包含单个 MCDChain 的列表
+        """
+        current_chain = MCDChain(name = "分离的命令")
+
+        for token in tokens:
+            match token:
+                case RawCommand(l, command):
+                    current_chain.items.append(ChainItemRawCommand(command = command))
+                case Comment(_, text):
+                    current_chain.items.append(ChainItemComment(text = text))
+                case _:
+                    raise MCDFormatException(f"Unexpected token type: {type(token).__name__}")
+        return [current_chain]
+
+    def _analysis_v2(self, tokens: list[MCDToken]) -> list[MCDChain]:
+        """
+        v2 语义分析：处理链标签、状态挂起、命令与状态配对，生成链列表。
+
+        @param tokens: MCDToken 列表
+        @return: 解析得到的 MCDChain 列表
+        """
+        chains: list[MCDChain] = []
+        current_chain: Optional[MCDChain] = None
+        pending_state: Optional[CommandState] = None
+
+        for token in tokens:
+            match token:
+                case ChainLabel(ln, name):
+                    if pending_state:
+                        self._report_line(pending_state.ln.ln, "Unused state comment before chain label")
+                        pending_state = None
+                    current_chain = MCDChain(name=name)
+                    chains.append(current_chain)
+
+                case CommandState(ln = ln):
+                    if current_chain is None:
+                        current_chain = MCDChain(name="Chain")
+                        chains.append(current_chain)
+                        self._report_line(ln.ln, "State outside any chain, created default chain")
+                    if pending_state:
+                        self._report_line(pending_state.ln.ln, "Unused state comment")
+                    pending_state = token
+
+                case RawCommand(ln, command):
+                    if current_chain is None:
+                        current_chain = MCDChain(name="Chain 0")
+                        chains.append(current_chain)
+                        self._report_line(ln.ln, "Command outside any chain, created default chain")
+
+                    if pending_state:
+                        block = MCDBlock(
+                            type=pending_state.type,
+                            conditional=pending_state.conditional,
+                            always_active=pending_state.always_active,
+                            needs_redstone=pending_state.needs_redstone,
+                            tick_delay=pending_state.tick_delay,
+                            command=command,
+                        )
+                        pending_state = None
+                    else:
+                        block = MCDBlock(command=command)
+
+                    current_chain.items.append(ChainItemBlock(block=block))
+
+                case Comment(ln, text):
+                    if current_chain is not None:
+                        current_chain.items.append(ChainItemComment(text=text))
+                case _:
+                    raise MCDFormatException(f"Unexpected token type in v2: {type(token).__name__}")
+
+        if pending_state:
+            self._report_line(pending_state.ln.ln, "Unused state comment at end of file")
+
+        return chains
+
+    def _report(self, l: Line, message: str, start_ptr: int, end_ptr: int) -> bool:
+        """
+        根据 strict_mode 和 relaxed 设置，报告错误或警告。
+
+        @param l: 所在行的 Line 对象
+        @param message: 错误/警告消息
+        @param start_ptr: 高亮起始绝对位置（字符索引）
+        @param end_ptr: 高亮结束绝对位置（半开区间）
+        @return: 若报告了错误（strict_mode 或非 relaxed）返回 True，否则 False
+        """
+        if self.strict_mode or (not self.relaxed):
+            self._report_error(l, message, start_ptr = start_ptr, end_ptr = end_ptr)
             return True
         if self.enable_warning:
-            self._report_warning(line_no, start_char, end_char, message)
+            self._report_warning(l, message, start_ptr = start_ptr, end_ptr = end_ptr)
         return False
 
-    def _report_warning(self, line_no: int, start_char: int, end_char: int, message: str) -> None:
-        if not self.enable_warning:
-            return
+    def _report_warning(self, l: Line, message: str, start_ptr: int, end_ptr: int) -> None:
+        """输出带上下文的警告（有高亮标记）。"""
         self.reporter.print_warning_with_context(
-            lines = self.lines,
-            line_no = line_no,
-            start_char = start_char,
-            end_char = end_char,
+            lines = self.source_code.original_lines,
+            line_no = l.ln,
+            start_char = start_ptr,
+            end_char = end_ptr,
             message = message,
             # file_name = self.file_name
         )
 
-    def _report_error(self, line_no: int, start_char: int, end_char: int, message: str) -> None:
+    def _report_error(self, l: Line, message: str, start_ptr: int, end_ptr: int) -> None:
+        """输出带上下文的错误（有高亮标记），并设置 had_error 标志。"""
         self.reporter.print_error_with_context(
-            lines = self.lines,
-            line_no = line_no,
-            start_char = start_char,
-            end_char = end_char,
+            lines = self.source_code.original_lines,
+            line_no = l.ln,
+            start_char = start_ptr,
+            end_char = end_ptr,
             message = message,
             # file_name = self.file_name
         )
+
+    def _report_line(self, line_no: int, message: str) -> bool:
+        """
+        报告只关联行号的错误或警告（无高亮标记）。
+
+        @param line_no: 行号（1-indexed）
+        @param message: 消息内容
+        @return: 若报告了错误（strict_mode 或非 relaxed）返回 True，否则 False
+        """
+        if self.strict_mode or (not self.relaxed):
+            self._report_error_line(line_no, message)
+            return True
+        if self.enable_warning:
+            self._report_warning_line(line_no, message)
+        return False
+
+    def _report_warning_line(self, line_no: int, message: str) -> None:
+        """输出只关联行号的警告（无高亮）。"""
+        if not self.enable_warning:
+            return
+        self.reporter.print_warning_line(
+            lines=self.source_code.original_lines,
+            line_no=line_no,
+            message=message,
+        )
+
+    def _report_error_line(self, line_no: int, message: str) -> None:
+        """输出只关联行号的错误（无高亮），并设置 had_error 标志。"""
+        self.reporter.print_error_line(
+            lines=self.source_code.original_lines,
+            line_no=line_no,
+            message=message,
+        )
+        self.had_error = True
+
+    def _report_lines(self, start_line: int, end_line: int, message: str) -> bool:
+        """
+        报告一个行范围的错误或警告（无高亮标记）。
+
+        @param start_line: 起始行号（1-indexed）
+        @param end_line: 结束行号（1-indexed，包含）
+        @param message: 消息内容
+        @return: 若报告了错误（strict_mode 或非 relaxed）返回 True，否则 False
+        """
+        if self.strict_mode or (not self.relaxed):
+            # 错误
+            self.reporter.print_error_lines(
+                lines=self.source_code.original_lines,
+                start_line=start_line,
+                end_line=end_line,
+                message=message,
+            )
+            self.had_error = True
+            return True
+        elif self.enable_warning:
+            # 警告
+            self.reporter.print_warning_lines(
+                lines=self.source_code.original_lines,
+                start_line=start_line,
+                end_line=end_line,
+                message=message,
+            )
+        return False

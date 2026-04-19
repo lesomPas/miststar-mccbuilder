@@ -1,3 +1,3 @@
-from miststar.textcomps import parse_file
+from textcomps import parse_file
 
-print(parse_file("../.data/cs.json"))
+print(parse_file(".data/xiaobao.json"))
