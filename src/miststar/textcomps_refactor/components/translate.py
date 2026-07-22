@@ -7,8 +7,10 @@ from typing import Optional
 from dataclasses import dataclass
 
 from .base import TextComponent, TranslateKind
-from ..printer import default_printer
 from ..exceptions import InvalidValueException
+
+if TYPE_CHECKING:
+    from .rawtext import Rawtext
 
 
 @dataclass(slots=True)
@@ -57,6 +59,3 @@ class Translate(TextComponent):
 
     def to_dictionary(self) -> dict:
         return Translate.build_dictionary(self.translate, self.with_content)
-
-    def __str__(self) -> str:
-        return default_printer.format(self)

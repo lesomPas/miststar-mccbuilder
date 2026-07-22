@@ -26,6 +26,3 @@ class Selector(TextComponent):
 
     def to_dictionary(self) -> dict:
         return {"selector": self.selector}
-
-    def __str__(self) -> str:
-        return f"selector | {self.selector}"

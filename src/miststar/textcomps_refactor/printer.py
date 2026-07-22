@@ -1,10 +1,17 @@
 # created by lesomras on 2026-7-22
 
 from __future__ import annotations
-from typing import Union, TYPE_CHECKING
+from typing import Union, Callable
 
-from .components.base import TextComponent, TranslateKind
-from .components.text import Text
+from .components import (
+    TextComponent,
+    TranslateKind,
+    Text,
+    Score,
+    Selector,
+    Translate,
+    Rawtext,
+)
 
 class StructuredPrinter:
     """
@@ -14,22 +21,33 @@ class StructuredPrinter:
     def __init__(self, indent: int = 4):
         self.indent = indent
 
-    def format(self, component: TextComponent, offset: int = 0) -> str:
+    def format(self, component: TextComponent, offset: int = 0, extra_formatter: Callable[[TextComponent], str] = repr) -> str:
         """
         将任意 TextComponent 格式化为树形字符串。
         """
-        from .components.rawtext import Rawtext
-        from .components.translate import Translate
+        match component:
+            case Rawtext():
+                return self._format_rawtext(component, offset)
+            case Translate():
+                return self._format_translate(component, offset)
+            case Text(content=content):
+                return self._format_text(content, offset)
+            case Score(name=name, objective=objective):
+                return f"score | {name} scoreboard :{objective}"
+            case Selector(selector=selector):
+                return f"selector | {selector}"
+            case _:
+                return f"{' ' * offset}{extra_formatter(component)}"
 
-        if isinstance(component, Rawtext):
-            return self._format_rawtext(component, offset)
-        elif isinstance(component, Translate):
-            return self._format_translate(component, offset)
-        elif isinstance(component, Text):
-            lines = [f"{' ' * offset}{ln}" for ln in component._str_sequence()]
-            return "\n".join(lines)
-        else:
-            return f"{' ' * offset}{str(component)}"
+    def _format_text(self, content: str, offset: int) -> str:
+        prefix = ' ' * offset
+        lines = []
+        for i, ln in enumerate(content.splitlines()):
+            if i == 0:
+                lines.append(f"{prefix}text | {ln}")
+            else:
+                lines.append(f"{prefix}     | {ln}")
+        return "\n".join(lines)
 
     def _format_rawtext(self, raw: Rawtext, offset: int) -> str:
         prefix = " " * offset
@@ -40,8 +58,6 @@ class StructuredPrinter:
         return "\n".join(lines)
 
     def _format_translate(self, trans: Translate, offset: int) -> str:
-        from .components.rawtext import Rawtext
-
         prefix = " " * offset
         kind = trans.kind
 
@@ -76,10 +92,11 @@ class StructuredPrinter:
         return "\n".join(lines)
 
 
-# ---------- 全局默认实例（兼容旧版 get_structured_str） ----------
 default_printer = StructuredPrinter(indent=4)
 
-def set_default_indent(indent: int) -> None:
-    """设置全局默认缩进"""
-    global _default_printer
-    default_printer = StructuredPrinter(indent=indent)
+def printraw(*args, formatter: Callable[[TextComponent], str] = default_printer.format) -> None:
+    output = []
+    for i in args:
+        assert isinstance(i, TextComponent)
+        output.append(formatter(i))
+    print("\n".join(output))

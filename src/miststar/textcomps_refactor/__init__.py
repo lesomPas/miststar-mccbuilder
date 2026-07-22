@@ -39,7 +39,7 @@ from .parser import (
 )
 
 # 打印机
-from .printer import StructuredPrinter, default_printer, set_default_indent
+from .printer import StructuredPrinter, default_printer, printraw
 
 # 异常
 from .exceptions import InvalidValueException
@@ -65,7 +65,6 @@ __all__ = [
 
     # 解析器
     "Parser",
-    "BatchParser",
     "parse_file",
     "parse_string",
     "parse_data",
@@ -77,7 +76,7 @@ __all__ = [
     # 打印机
     "StructuredPrinter",
     "default_printer",
-    "set_default_indent",
+    "printraw",
 
     # 异常
     "InvalidValueException",

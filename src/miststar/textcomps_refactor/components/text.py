@@ -26,23 +26,3 @@ class Text(TextComponent):
 
     def to_dictionary(self) -> dict:
         return {"text": self.content}
-
-    def _str_sequence(self) -> list[str]:
-        result = []
-        content = self.content.splitlines()
-        for i, ln in enumerate(content):
-            if i == 0:
-                result.append(f"text  | {ln}")
-            else:
-                result.append(f"      | {ln}")
-        return result
-
-    def __str__(self) -> str:
-        result = []
-        content = self.content.splitlines()
-        for i, ln in enumerate(content):
-            if i == 0:
-                result.append(f"text  | {ln}")
-            else:
-                result.append(f"      | {ln}")
-        return "\n".join(result)

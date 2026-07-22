@@ -1,6 +1,8 @@
 # created by lesomras on 2026-7-22
 
 from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
@@ -14,7 +16,9 @@ from .translate import Translate
 from .template import template_analysis
 
 from ..analyzer import SemanticComponentAnalyzer
-from ..printer import default_printer
+
+if TYPE_CHECKING:
+    from .translate_builder import TranslateBuilder
 
 
 @dataclass(slots=True)
@@ -37,7 +41,7 @@ class Rawtext(TextComponent):
         return cls(data)
 
     @classmethod
-    def from_component(cls, *args) -> Rawtext:
+    def from_component(cls, *args: TextComponent) -> Rawtext:
         for i in args:
             if not isinstance(i, TextComponent):
                 raise InvalidValueException.type_exception("The args", "TextComponent", i)
@@ -50,7 +54,7 @@ class Rawtext(TextComponent):
     def to_dictionary(self) -> dict:
         return {"rawtext": [i.to_dictionary() for i in self.data]}
 
-    def add(self, *args) -> Rawtext:
+    def add(self, *args: TextComponent) -> Rawtext:
         """将文本组件加入到Rawtext中"""
         for i in args:
             if not isinstance(i, TextComponent):
@@ -58,7 +62,7 @@ class Rawtext(TextComponent):
         self.data.extend(args)
         return self
 
-    def add_semantic_component(self, *args) -> Rawtext:
+    def add_semantic_component(self, *args: str | TextComponent) -> Rawtext:
         """将一个特定形式的字符串解析为文本组件加入到Rawtext中, 若本来就是文本组件则直接加入"""
         for sentence in args:
             # TextComponent
@@ -78,7 +82,7 @@ class Rawtext(TextComponent):
                     self.data.append(Score(sentence_data[0], sentence_data[1]))
         return self
 
-    def asc(self, *args) -> Rawtext:
+    def asc(self, *args: str | TextComponent) -> Rawtext:
         self.add_semantic_component(*args)
         return self
 
@@ -108,16 +112,13 @@ class Rawtext(TextComponent):
         return TranslateBuilder(translate, self)
 
     def template(self, template: str) -> Rawtext:
-        return self.add(template_analysis(template))
+        return self.add(*template_analysis(template))
 
     def __len__(self) -> int:
         return len(self.data)
 
     def __getitem__(self, index: int) -> TextComponent:
         return self.data[index]
-
-    def __str__(self) -> str:
-        return default_printer.format(self)
 
 
 def _array_processing(dictionary: dict) -> dict:

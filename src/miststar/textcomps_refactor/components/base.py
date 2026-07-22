@@ -20,9 +20,6 @@ class TextComponent(Protocol):
         """实现由该文本组件到字典的转换"""
         ...
 
-    def __str__(self) -> str:
-        ...
-
 
 class TranslateKind(Enum):
     PureTranslate = "TranslateKind.PureTranslate"

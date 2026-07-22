@@ -59,6 +59,3 @@ class Score(TextComponent):
     @classmethod
     def initiator(cls, objective: str) -> Score:
         return cls(name="@initiator", objective=objective)
-
-    def __str__(self) -> str:
-        return f"score | {self.name} scoreboard :{self.objective}"

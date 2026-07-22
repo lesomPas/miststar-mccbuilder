@@ -34,17 +34,17 @@ class TranslateBuilder:
                 raise InvalidValueException("TranslateKind was locked into string translate, TextComponent is disabled.")
 
 
-    def include(self, *args) -> TranslateBuilder:
+    def include(self, *args: TextComponent) -> TranslateBuilder:
         self._conflict_check(TranslateKind.RawtextTranslate, Rawtext)
         self.translate.with_content.add(*args) # type: ignore
         return self
 
-    def include_asc(self, *args) -> TranslateBuilder:
+    def include_asc(self, *args: str | TextComponent) -> TranslateBuilder:
         self._conflict_check(TranslateKind.RawtextTranslate, Rawtext)
         self.translate.with_content.add_semantic_component(*args) # type: ignore
         return self
 
-    def include_string(self, *args) -> TranslateBuilder:
+    def include_string(self, *args: str) -> TranslateBuilder:
         self._conflict_check(TranslateKind.StringTranslate, list)
         if not all(isinstance(i, str) for i in args):
             raise InvalidValueException.type_exception_value("The args", "str", args)
@@ -57,21 +57,21 @@ class TranslateBuilder:
         self.raw.data.append(self.translate)
         return self.raw
 
-    def build(self, *args) -> Rawtext:
+    def build(self, *args: TextComponent) -> Rawtext:
         if args:
             self._conflict_check(TranslateKind.RawtextTranslate, Rawtext)
 
             self.translate.with_content.add(*args) # type: ignore
         return self.rawtext()
 
-    def build_asc(self, *args) -> Rawtext:
+    def build_asc(self, *args: str | TextComponent) -> Rawtext:
         if args:
             self._conflict_check(TranslateKind.RawtextTranslate, Rawtext)
 
             self.translate.with_content.add_semantic_component(*args) # type: ignore
         return self.rawtext()
 
-    def build_string(self, *args) -> Rawtext:
+    def build_string(self, *args: str) -> Rawtext:
         if args:
             self._conflict_check(TranslateKind.StringTranslate, list)
             if not all(isinstance(i, str) for i in args):
