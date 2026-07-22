@@ -29,7 +29,6 @@ from .components import (
 # 解析器
 from .parser import (
     Parser,
-    BatchParser,
     parse_file,
     parse_string,
     parse_data,

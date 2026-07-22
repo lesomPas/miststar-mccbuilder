@@ -77,7 +77,7 @@ class StructuredPrinter:
 
 
 # ---------- 全局默认实例（兼容旧版 get_structured_str） ----------
-default_printer = StructuredPrinter(indent=2)
+default_printer = StructuredPrinter(indent=4)
 
 def set_default_indent(indent: int) -> None:
     """设置全局默认缩进"""
