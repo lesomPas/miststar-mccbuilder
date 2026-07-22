@@ -594,7 +594,7 @@ def _array_processing(dictionary: dict) -> dict:
 
 
 def rawtext_lexer(sequence: list[dict]) -> list[TextComponent]:
-    """这样由字典组成的列表转化为由文本组件组成的列表"""
+    """由字典组成的列表转化为由文本组件组成的列表"""
     if not iterable_of(sequence, dict):
         raise UnsupportedArgument("dictionary error")
 

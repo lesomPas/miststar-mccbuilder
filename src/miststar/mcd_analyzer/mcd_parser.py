@@ -2,7 +2,7 @@
 import re
 from typing import Optional, Union, NamedTuple
 
-from ..utils.reporter import Reporter
+from utils.reporter import Reporter
 from .source_code import Line, SourceCode
 from .mcd import (
     BlockType,
@@ -40,6 +40,7 @@ class CommandState(NamedTuple):
     needs_redstone: bool = False
     tick_delay: int = 0
 
+
 MCDToken = Union[Comment, RawCommand, ChainLabel, CommandState]
 
 class Label(NamedTuple):
@@ -50,6 +51,7 @@ class Label(NamedTuple):
 class TokenizeMCD(NamedTuple):
     labels: list[Label]
     tokens: list[MCDToken]
+
 
 class MCDParser:
     def __init__(
@@ -263,11 +265,11 @@ class MCDParser:
         """
         def error_at(offset: int, msg: str) -> None:
             col = spaces_offset + offset
-            self._report_error(l, msg, *l.left_relative_len_range(col, 1))
+            self._report(l, msg, *l.left_relative_len_range(col, 1))
 
         def error_remaining(offset: int, msg: str) -> None:
             col = spaces_offset + offset
-            self._report_error(l, msg, *l.relative_range(col, 0))
+            self._report(l, msg, *l.relative_range(col, 0))
 
         def check_remaining(offset: int, location: str) -> bool:
             if offset < state_str_len:
@@ -499,9 +501,9 @@ class MCDParser:
 
                 case CommandState(ln = ln):
                     if current_chain is None:
-                        current_chain = MCDChain(name="Chain")
+                        current_chain = MCDChain(name="Chain 0")
                         chains.append(current_chain)
-                        self._report_line(ln.ln, "State outside any chain, created default chain")
+                        self._report_line(ln.ln, "State outside any chain, created default chain", enable_relaxed = True)
                     if pending_state:
                         self._report_line(pending_state.ln.ln, "Unused state comment")
                     pending_state = token
@@ -510,7 +512,7 @@ class MCDParser:
                     if current_chain is None:
                         current_chain = MCDChain(name="Chain 0")
                         chains.append(current_chain)
-                        self._report_line(ln.ln, "Command outside any chain, created default chain")
+                        self._report_line(ln.ln, "Command outside any chain, created default chain", enable_relaxed = True)
 
                     if pending_state:
                         block = MCDBlock(
@@ -549,35 +551,25 @@ class MCDParser:
         @return: 若报告了错误（strict_mode 或非 relaxed）返回 True，否则 False
         """
         if self.strict_mode or (not self.relaxed):
-            self._report_error(l, message, start_ptr = start_ptr, end_ptr = end_ptr)
+            self.reporter.print_error_with_context(
+                lines = self.source_code.original_lines,
+                line_no = l.ln,
+                start_char = start_ptr,
+                end_char = end_ptr,
+                message = message,
+            )
             return True
         if self.enable_warning:
-            self._report_warning(l, message, start_ptr = start_ptr, end_ptr = end_ptr)
+            self.reporter.print_warning_with_context(
+                lines = self.source_code.original_lines,
+                line_no = l.ln,
+                start_char = start_ptr,
+                end_char = end_ptr,
+                message = message,
+            )
         return False
 
-    def _report_warning(self, l: Line, message: str, start_ptr: int, end_ptr: int) -> None:
-        """输出带上下文的警告（有高亮标记）。"""
-        self.reporter.print_warning_with_context(
-            lines = self.source_code.original_lines,
-            line_no = l.ln,
-            start_char = start_ptr,
-            end_char = end_ptr,
-            message = message,
-            # file_name = self.file_name
-        )
-
-    def _report_error(self, l: Line, message: str, start_ptr: int, end_ptr: int) -> None:
-        """输出带上下文的错误（有高亮标记），并设置 had_error 标志。"""
-        self.reporter.print_error_with_context(
-            lines = self.source_code.original_lines,
-            line_no = l.ln,
-            start_char = start_ptr,
-            end_char = end_ptr,
-            message = message,
-            # file_name = self.file_name
-        )
-
-    def _report_line(self, line_no: int, message: str) -> bool:
+    def _report_line(self, line_no: int, message: str, enable_relaxed = False) -> bool:
         """
         报告只关联行号的错误或警告（无高亮标记）。
 
@@ -585,31 +577,21 @@ class MCDParser:
         @param message: 消息内容
         @return: 若报告了错误（strict_mode 或非 relaxed）返回 True，否则 False
         """
-        if self.strict_mode or (not self.relaxed):
-            self._report_error_line(line_no, message)
+        if ((not enable_relaxed) and self.strict_mode) or (not self.relaxed):
+            self.reporter.print_error_line(
+                lines=self.source_code.original_lines,
+                line_no=line_no,
+                message=message,
+            )
+            self.had_error = True
             return True
         if self.enable_warning:
-            self._report_warning_line(line_no, message)
+            self.reporter.print_warning_line(
+                lines=self.source_code.original_lines,
+                line_no=line_no,
+                message=message,
+            )
         return False
-
-    def _report_warning_line(self, line_no: int, message: str) -> None:
-        """输出只关联行号的警告（无高亮）。"""
-        if not self.enable_warning:
-            return
-        self.reporter.print_warning_line(
-            lines=self.source_code.original_lines,
-            line_no=line_no,
-            message=message,
-        )
-
-    def _report_error_line(self, line_no: int, message: str) -> None:
-        """输出只关联行号的错误（无高亮），并设置 had_error 标志。"""
-        self.reporter.print_error_line(
-            lines=self.source_code.original_lines,
-            line_no=line_no,
-            message=message,
-        )
-        self.had_error = True
 
     def _report_lines(self, start_line: int, end_line: int, message: str) -> bool:
         """
