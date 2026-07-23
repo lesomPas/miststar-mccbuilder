@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Union
 
 from .components import rawtext_lexer, Rawtext, TextComponent
-from miststar.internal.exceptions import MalformedArgument, UnsupportedArgument
+from miststar.exceptions import MalformedArgument, UnsupportedArgument
 from miststar.serializer import JsonSerializer, CompactSerializer
 
 

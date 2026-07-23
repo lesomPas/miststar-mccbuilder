@@ -1,6 +1,6 @@
 # create by lesomras on 2025-12-13
 
-from .exceptions import MissingArgument, UnsupportedArgument, MalformedArgument
+from miststar.exceptions import MissingArgument, UnsupportedArgument, MalformedArgument
 from collections.abc import Callable, Iterable
 
 def is_value(d: dict, key: str, data_type: type) -> bool:

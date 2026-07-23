@@ -2,7 +2,7 @@
 import re
 from typing import Optional, Union, NamedTuple
 
-from utils.reporter import Reporter
+from .reporter import Reporter
 from .source_code import Line, SourceCode
 from .mcd import (
     BlockType,

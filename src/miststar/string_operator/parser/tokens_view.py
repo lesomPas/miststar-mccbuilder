@@ -1,7 +1,7 @@
 # create by lesomras on 2026-1-3
 from typing import Callable
 
-from string_operator.lexer.token import TokenType, Token, TokenizedContent
+from miststar.string_operator.lexer.token import TokenType, Token, TokenizedContent
 
 class TokensView(object):
     def __init__(self, tokenized_content: TokenizedContent, start: int, end: int) -> None:

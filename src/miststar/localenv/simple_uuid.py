@@ -2,7 +2,7 @@
 import uuid
 from typing import TypeVar, Generic, Optional
 
-from .exceptions import UnsupportedException, MalformedException, SemanticException
+from miststar.exceptions import UnsupportedException, MalformedException, SemanticException
 
 T = TypeVar('T')
 

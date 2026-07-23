@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "miststar-mccbuilder"
-version = "0.4.2-beta"
+version = "0.4.3-alpha"
 description = "Minecraft Command Builder"
 readme = "README.md"
 license = "MIT"
@@ -42,5 +42,5 @@ pretty = true
 
 [tool.pyright]
 pythonVersion = "3.11"
-include = ["src", "tests"]
+include = ["src"]
 typeCheckingMode = "standard"

@@ -1,8 +1,8 @@
 # create by lesomras on 2025-12-21
 
 from .components import TextComponent, Rawtext, Text, Score, Selector, infer_type
-from miststar.internal.exceptions import UnsupportedArgument
-# from miststar.internal.string import tokenize_template
+from miststar.exceptions import UnsupportedArgument
+from .string import tokenize_template
 
 def template_analysis(template: str) -> list[TextComponent]:
     """

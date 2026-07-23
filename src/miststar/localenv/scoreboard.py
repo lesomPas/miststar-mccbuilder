@@ -5,8 +5,8 @@ from random import randint
 from functools import partial
 
 from .entity import Entity
-from internal.exceptions import ReferenceNotFoundException, MalformedException
-from internal.int32 import Int32, checking32, build32, Integer
+from miststar.exceptions import ReferenceNotFoundException, MalformedException
+from .int32 import Int32, checking32, build32, Integer
 
 class Scoreboard(object):
     def __init__(self, objective: str, display_name: str = "") -> None:

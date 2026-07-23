@@ -5,7 +5,7 @@ from typing import Optional
 
 from .tokens_view import TokensView
 from .error_reason import ErrorReason
-from string_operator.node.node_with_type import NodeWithType
+from miststar.string_operator.node.node_with_type import NodeWithType
 
 class ASTNodeMode(Enum):
     NONE = 0        # 没有向下的分支
