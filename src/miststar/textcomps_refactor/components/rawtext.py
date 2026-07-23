@@ -109,7 +109,7 @@ class Rawtext(TextComponent):
     def translate(self, translate: str) -> TranslateBuilder:
         """快速构建Translate文本组件. translate参数为Translate的第一个形参"""
         from .translate_builder import TranslateBuilder
-        return TranslateBuilder(translate, self)
+        return TranslateBuilder(Translate(translate), self)
 
     def template(self, template: str) -> Rawtext:
         return self.add(*template_analysis(template))

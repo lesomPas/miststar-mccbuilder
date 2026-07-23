@@ -1,5 +1,5 @@
 # create by lesomras on 2025-12-13
-from exceptions import MiststarException
+from miststar.exceptions import MiststarException
 
 class CommandException(MiststarException):
     """所有有关异常基类"""

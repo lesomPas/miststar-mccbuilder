@@ -11,6 +11,7 @@ from ..exceptions import InvalidValueException
 
 if TYPE_CHECKING:
     from .rawtext import Rawtext
+    from .translate_builder import TranslateBuilder
 
 
 @dataclass(slots=True)
@@ -29,7 +30,7 @@ class Translate(TextComponent):
 
     @property
     def kind(self) -> TranslateKind:
-        if self.with_content:
+        if self.with_content is not None:
             if isinstance(self.with_content, list):
                 return TranslateKind.StringTranslate
             else:
@@ -59,3 +60,7 @@ class Translate(TextComponent):
 
     def to_dictionary(self) -> dict:
         return Translate.build_dictionary(self.translate, self.with_content)
+
+    def into_builder(self) -> TranslateBuilder:
+        from .translate_builder import TranslateBuilder
+        return TranslateBuilder(self)

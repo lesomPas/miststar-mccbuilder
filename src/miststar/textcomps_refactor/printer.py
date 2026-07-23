@@ -33,9 +33,9 @@ class StructuredPrinter:
             case Text(content=content):
                 return self._format_text(content, offset)
             case Score(name=name, objective=objective):
-                return f"score | {name} scoreboard :{objective}"
+                return f"{' ' * offset}score | {name} scoreboard :{objective}"
             case Selector(selector=selector):
-                return f"selector | {selector}"
+                return f"{' ' * offset}selec | {selector}"
             case _:
                 return f"{' ' * offset}{extra_formatter(component)}"
 
@@ -44,14 +44,14 @@ class StructuredPrinter:
         lines = []
         for i, ln in enumerate(content.splitlines()):
             if i == 0:
-                lines.append(f"{prefix}text | {ln}")
+                lines.append(f"{prefix}text  | {ln}")
             else:
-                lines.append(f"{prefix}     | {ln}")
+                lines.append(f"{prefix}      | {ln}")
         return "\n".join(lines)
 
     def _format_rawtext(self, raw: Rawtext, offset: int) -> str:
         prefix = " " * offset
-        lines = [f"{prefix}rawtext => {{"]
+        lines = [f"{prefix}raw > {{"]
         for comp in raw.data:
             lines.append(self.format(comp, offset + self.indent))
         lines.append(f"{prefix}}}")
@@ -62,10 +62,10 @@ class StructuredPrinter:
         kind = trans.kind
 
         if kind == TranslateKind.PureTranslate:
-            return f"{prefix}translate | {trans.translate}"
+            return f"{prefix}trans | {trans.translate}"
 
-        lines = [f"{prefix}translate* => {{"]
-        lines.append(f"{' ' * (offset + self.indent)}translate | {trans.translate}")
+        lines = [f"{prefix}trans > {{"]
+        lines.append(f"{' ' * (offset + self.indent)}trans | {trans.translate}")
 
         with_content = trans.with_content
         if isinstance(with_content, Rawtext):
@@ -76,19 +76,19 @@ class StructuredPrinter:
                 if i == 0:
                     # 第一行去掉原有缩进，重新对齐
                     stripped = line.lstrip()
-                    sub_lines[i] = f"{' ' * (offset + self.indent)}{stripped}"
+                    sub_lines[i] = f"{' ' * (offset + self.indent)}with  | {stripped}"
                 else:
                     sub_lines[i] = f"{' ' * (offset + self.indent)}{line}"
             lines.extend(sub_lines)
         elif isinstance(with_content, list):
-            lines.append(f"{' ' * (offset + self.indent)}with | sequence => (")
+            lines.append(f"{' ' * (offset + self.indent)}with  | sequence => (")
             for item in with_content:
                 lines.append(f"{' ' * (offset + 2 * self.indent)}{item}")
             lines.append(f"{' ' * (offset + self.indent)})")
         else:
-            lines.append(f"{' ' * (offset + self.indent)}with | None")
+            lines.append(f"{' ' * (offset + self.indent)}with  | None")
 
-        lines.append(f"{prefix}}} end*")
+        lines.append(f"{prefix}}}")
         return "\n".join(lines)
 
 

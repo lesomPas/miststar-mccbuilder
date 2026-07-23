@@ -15,11 +15,11 @@ from ..exceptions import InvalidValueException
 class TranslateBuilder:
     __slots__ = ("raw", "translate")
 
-    def __init__(self, translate: str, raw: Optional[Rawtext] = None) -> None:
+    def __init__(self, translate: Translate, raw: Optional[Rawtext] = None) -> None:
         assert (raw is None) or isinstance(raw, Rawtext)
-        assert isinstance(translate, str)
+        assert isinstance(translate, Translate)
         self.raw = raw
-        self.translate = Translate(translate=translate)
+        self.translate = translate
 
     def _conflict_check(self, check_kind: TranslateKind, default_factory) -> None:
         kind = self.translate.kind
@@ -50,6 +50,9 @@ class TranslateBuilder:
             raise InvalidValueException.type_exception_value("The args", "str", args)
         self.translate.with_content.extend(args) # type: ignore
         return self
+
+    def end(self) -> Translate:
+        return self.translate
 
     def rawtext(self) -> Rawtext:
         if self.raw is None:

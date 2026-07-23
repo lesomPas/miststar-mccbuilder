@@ -3,8 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Union, Optional, Callable, Literal
 
-from internal.dict_checking import is_value, iterable_of, matching
-from internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
+from miststar.internal.dict_checking import is_value, iterable_of, matching
+from miststar.internal.exceptions import UnsupportedArgument, MissingArgument, MalformedArgument
 
 segmentation = "[]."
 indentation = 4
