@@ -24,6 +24,9 @@ from .components import (
     Translate,
     TranslateBuilder,
     template_analysis,
+    RawtextWith,
+    TranslateWithComp,
+    TranslateWithString,
 )
 
 # 解析器
@@ -62,6 +65,9 @@ __all__ = [
     "Translate",
     "TranslateBuilder",
     "template_analysis",
+    "RawtextWith",
+    "TranslateWithComp",
+    "TranslateWithString",
 
     # 解析器
     "Parser",

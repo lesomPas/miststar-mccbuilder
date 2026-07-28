@@ -42,9 +42,6 @@ class Rawtext(TextComponent):
 
     @classmethod
     def from_component(cls, *args: TextComponent) -> Rawtext:
-        for i in args:
-            if not isinstance(i, TextComponent):
-                raise InvalidValueException.type_exception("The args", "TextComponent", i)
         return cls(data=list(args))
 
     @classmethod

@@ -8,6 +8,7 @@ from .selector import Selector
 from .translate import Translate
 from .translate_builder import TranslateBuilder
 from .template import template_analysis
+from .rawtext_builder import RawtextWith, TranslateWithComp, TranslateWithString
 
 __all__ = [
     "TextComponent",
@@ -19,4 +20,7 @@ __all__ = [
     "Translate",
     "TranslateBuilder",
     "template_analysis",
+    "RawtextWith",
+    "TranslateWithComp",
+    "TranslateWithString",
 ]
