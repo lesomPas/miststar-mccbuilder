@@ -4,6 +4,18 @@ class MiststarException(Exception):
     """ MiststarMccbuilder 根异常 """
     pass
 
+
+class InvalidValueException(MiststarException):
+    """无效值异常"""
+    @classmethod
+    def type_exception(cls, attr: str, type_str: str, obj):
+        return cls(f"{attr} must be {type_str}, got {type(obj).__name__}")
+
+    @classmethod
+    def type_exception_value(cls, attr: str, type_str: str, obj):
+        return cls(f"{attr} must be {type_str}, got {obj!r}")
+
+
 # 历史遗留
 class CommandException(MiststarException):
     """所有有关异常基类"""

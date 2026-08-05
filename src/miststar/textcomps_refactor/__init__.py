@@ -44,9 +44,6 @@ from .parser import (
 # 打印机
 from .printer import StructuredPrinter, default_printer, printraw
 
-# 异常
-from .exceptions import InvalidValueException
-
 # 分析器（高级用户可能用到）
 from .analyzer import SemanticComponentAnalyzer, TemplateLexer
 
@@ -83,9 +80,6 @@ __all__ = [
     "StructuredPrinter",
     "default_printer",
     "printraw",
-
-    # 异常
-    "InvalidValueException",
 
     # 分析器
     "SemanticComponentAnalyzer",

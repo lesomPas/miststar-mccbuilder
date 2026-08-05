@@ -6,7 +6,7 @@ from .score import Score
 from .selector import Selector
 from ..analyzer import SemanticComponentAnalyzer, TemplateLexer
 
-from ..exceptions import InvalidValueException
+from miststar.exceptions import InvalidValueException
 
 
 def template_analysis(template: str) -> list[TextComponent]:

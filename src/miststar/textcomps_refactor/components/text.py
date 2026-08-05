@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .base import TextComponent
-from ..exceptions import InvalidValueException
+from miststar.exceptions import InvalidValueException
 
 
 @dataclass(slots=True)

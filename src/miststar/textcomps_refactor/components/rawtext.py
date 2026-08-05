@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from .base import TextComponent
-from ..exceptions import InvalidValueException
+from miststar.exceptions import InvalidValueException
 
 from .text import Text
 from .score import Score

@@ -7,7 +7,7 @@ from typing import Optional
 from dataclasses import dataclass
 
 from .base import TextComponent, TranslateKind
-from ..exceptions import InvalidValueException
+from miststar.exceptions import InvalidValueException
 
 if TYPE_CHECKING:
     from .rawtext import Rawtext

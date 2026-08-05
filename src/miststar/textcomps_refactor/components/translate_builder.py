@@ -9,7 +9,7 @@ from .base import TextComponent
 from .rawtext import Rawtext
 from .translate import Translate, TranslateKind
 
-from ..exceptions import InvalidValueException
+from miststar.exceptions import InvalidValueException
 
 
 class TranslateBuilder:

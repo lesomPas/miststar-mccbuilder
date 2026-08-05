@@ -8,7 +8,7 @@ from typing import Union, Iterable, Optional
 
 from .components.rawtext import Rawtext
 from .components.base import TextComponent
-from .exceptions import InvalidValueException
+from miststar.exceptions import InvalidValueException
 
 
 class Parser:
