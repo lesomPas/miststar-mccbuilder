@@ -2,8 +2,8 @@
 测试基础组件：Text, Score, Selector
 """
 import pytest
-from miststar.textcomps_refactor import Text, Score, Selector
-from miststar.textcomps_refactor.exceptions import InvalidValueException
+from miststar.textcomps import Text, Score, Selector
+from miststar.exceptions import InvalidValueException
 
 
 # ============================================================================

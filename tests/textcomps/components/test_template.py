@@ -2,8 +2,8 @@
 测试模板系统：template_analysis 函数
 """
 import pytest
-from miststar.textcomps_refactor import template_analysis, Text, Score, Selector
-from miststar.textcomps_refactor.exceptions import InvalidValueException
+from miststar.textcomps import template_analysis, Text, Score, Selector
+from miststar.exceptions import InvalidValueException
 
 
 # ============================================================================

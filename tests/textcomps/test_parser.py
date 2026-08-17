@@ -3,7 +3,7 @@
 """
 import json
 import pytest
-from miststar.textcomps_refactor import (
+from miststar.textcomps import (
     Rawtext, Text, Score, Selector, Translate,
     Parser,
     parse_file, parse_string, parse_data,
@@ -11,7 +11,7 @@ from miststar.textcomps_refactor import (
     validate_rawtext_file, validate_rawtext_string,
     extract_components
 )
-from miststar.textcomps_refactor.exceptions import InvalidValueException
+from miststar.exceptions import InvalidValueException
 
 
 # ============================================================================

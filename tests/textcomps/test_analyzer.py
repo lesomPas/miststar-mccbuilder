@@ -3,8 +3,8 @@
 测试 analyzer 模块：SemanticComponentAnalyzer 和 TemplateLexer
 """
 import pytest
-from miststar.textcomps_refactor.analyzer import SemanticComponentAnalyzer, TemplateLexer
-from miststar.textcomps_refactor.exceptions import InvalidValueException
+from miststar.textcomps.analyzer import SemanticComponentAnalyzer, TemplateLexer
+from miststar.exceptions import InvalidValueException
 
 
 # ============================================================================

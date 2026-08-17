@@ -2,8 +2,8 @@
 测试 Translate 组件
 """
 import pytest
-from miststar.textcomps_refactor import Translate, Rawtext, Text, TranslateKind
-from miststar.textcomps_refactor.exceptions import InvalidValueException
+from miststar.textcomps import Translate, Rawtext, Text, TranslateKind
+from miststar.exceptions import InvalidValueException
 
 
 # ============================================================================

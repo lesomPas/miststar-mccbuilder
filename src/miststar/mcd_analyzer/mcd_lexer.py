@@ -1,6 +1,7 @@
 # created by lesomras on 2026-7-28
 
 from enum import Enum
+
 from typing import NamedTuple, Protocol
 from collections.abc import Iterable
 

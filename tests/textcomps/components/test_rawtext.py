@@ -3,8 +3,8 @@
 （不包含 TranslateBuilder 相关测试）
 """
 import pytest
-from miststar.textcomps_refactor import Rawtext, Text, Score, Selector, Translate
-from miststar.textcomps_refactor.exceptions import InvalidValueException
+from miststar.textcomps import Rawtext, Text, Score, Selector, Translate
+from miststar.exceptions import InvalidValueException
 
 
 # ============================================================================
@@ -304,7 +304,7 @@ class TestRawtextErrorHandling:
     def test_from_component_invalid(self):
         with pytest.raises(InvalidValueException) as exc:
             Rawtext.from_component(Text("a"), 123)  # type: ignore
-        assert "args" in str(exc.value)
+        assert "data" in str(exc.value)
 
     def test_from_dictionary_missing_rawtext(self):
         with pytest.raises(KeyError):

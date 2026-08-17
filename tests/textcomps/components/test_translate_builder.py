@@ -2,11 +2,11 @@
 测试 TranslateBuilder
 """
 import pytest
-from miststar.textcomps_refactor import (
+from miststar.textcomps import (
     Rawtext, Text, Score, Selector, Translate,
     TranslateBuilder, TranslateKind
 )
-from miststar.textcomps_refactor.exceptions import InvalidValueException
+from miststar.exceptions import InvalidValueException
 
 
 # ============================================================================

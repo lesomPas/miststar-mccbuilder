@@ -3,7 +3,7 @@
 匹配 printer.py 优化后的格式
 """
 import pytest
-from miststar.textcomps_refactor import (
+from miststar.textcomps import (
     Rawtext, Text, Score, Selector, Translate,
     StructuredPrinter, default_printer, printraw
 )

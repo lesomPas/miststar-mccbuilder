@@ -1,4 +1,5 @@
 # create by lesomras on 2026-4-12
+from __future__ import annotations
 
 from typing import Literal
 
@@ -29,12 +30,15 @@ class CommandState:
     always_active: bool = True
     tick_delay: int = 0
 
+    def derive(self) -> tuple[BlockKind, bool, bool, int]:
+        return (self.kind, self.conditional, self.always_active, self.tick_delay)
+
 
 class ChainItem:
     """ 链中的一个元素：可能是注释、v1 原始指令、或 v2 命令方块 """
-    Comment: type["ChainItemComment"]
-    TextCommand: type["ChainItemTextCommand"]
-    MarkedCommand: type["ChainItemMarkedCommand"]
+    Comment: type["Comment"]
+    TextCommand: type["TextCommand"]
+    MarkedCommand: type["MarkedCommand"]
 
 
 @dataclass(slots=True)
@@ -71,3 +75,13 @@ class MCD:
     meta_info: list[MCDMeta] = field(default_factory=list)
     chains: list[MCDChain] = field(default_factory=list)
     version: Literal[1, 2] = 1
+
+    @classmethod
+    def create(cls, mcd_version: Literal[1, 2]) -> MCD:
+        if mcd_version == 1:
+            return cls(
+                chains = [MCDChain(name="分离的命令")],
+                version = mcd_version,
+            )
+        if mcd_version == 2:
+            return cls(version=2)
